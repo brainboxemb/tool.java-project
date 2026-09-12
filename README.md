@@ -6,7 +6,22 @@ Reusable Java/Maven engineering tooling for reproducible Linux/Windows builds, t
 
 This repository owns generic Java-project engineering behaviour that can be reused by product repositories. It deliberately does **not** own product/domain behaviour.
 
-The initial baseline proves:
+The Java tool now sits on top of the generic Git-project bootstrap layer:
+
+```text
+consumer repository
+  bootstrap.ps1 / bootstrap.sh
+        ↓
+  tools/tool.git-project   pinned gitlink
+        ↓
+  project.yml              generic repository/dependency configuration
+        ↓
+  project.java.yml         Java-specific configuration
+        ↓
+  Maven Wrapper / Java verification / reusable CI
+```
+
+The initial Java baseline proves:
 
 ```text
 clean checkout
@@ -34,14 +49,38 @@ Windows compatibility execution of that exact artifact
 - compatibility environment: GitHub-hosted Windows;
 - Docker: not required for normal compile/unit-test paths.
 
-The first real product consumer will be created only after this repository can prove the toolchain with its own generic fixture.
+The baseline values are also recorded in `project.java.yml`. The existing reusable workflow continues to take explicit inputs in this revision; later tooling may validate/read the Java profile directly once the profile contract has been exercised by real consumers.
+
+## Local checkout and bootstrap
+
+A normal checkout does not need `--recurse-submodules`.
+
+On Windows:
+
+```powershell
+git clone https://github.com/brainboxemb/tool.java-project.git
+cd tool.java-project
+.\bootstrap.ps1
+```
+
+On Linux/POSIX shell:
+
+```bash
+git clone https://github.com/brainboxemb/tool.java-project.git
+cd tool.java-project
+./bootstrap.sh
+```
+
+The root launcher restores the exact committed `tools/tool.git-project` gitlink and delegates generic dependency handling to it. `update-repo.ps1` / `update-repo.sh` perform the controlled generic dependency-update pass after bootstrap.
+
+For this repository `project.yml` currently has no additional managed externals; it exists to establish the shared generic/project-profile structure and to prove the same local flow consumers will use.
 
 ## Repository structure
 
 ```text
 .github/workflows/
   reusable-java-verify.yml   reusable consumer workflow
-  self-test.yml              repository/fixture proof
+  self-test.yml              local-bootstrap + Java fixture proof
 
 docs/
   consumer-usage.md          workflow contract, pinning and evidence model
@@ -49,6 +88,13 @@ docs/
 fixture/
   minimal-java-app/          generic runnable Java 8 test fixture
 
+tools/
+  tool.git-project/          pinned bootstrap submodule
+
+project.yml                  generic repository/profile declaration
+project.java.yml             Java-specific baseline
+bootstrap.ps1 / bootstrap.sh
+update-repo.ps1 / update-repo.sh
 AGENTS.md
 CHANGELOG.md
 README.md
@@ -56,11 +102,11 @@ README.md
 
 ## Consumer direction
 
-A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper, then calls the reusable workflow from this repository using a deliberate pinned reference.
+A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper. It can use the same generic Git bootstrap pattern locally and call the reusable workflow from this repository using a deliberate pinned reference.
 
-See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete contract and example caller workflow.
+See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete CI contract and example caller workflow.
 
-The reusable workflow provides generic behaviour such as:
+The reusable workflow provides generic Java behaviour such as:
 
 - explicit Java provisioning;
 - Maven Wrapper version/use validation;
@@ -86,16 +132,16 @@ Docker/Compose may be introduced by consumers for real external-service integrat
 
 ## Evidence
 
-The repository self-test uses the generic fixture to prove all three initial paths:
+The repository self-test proves two independent layers:
 
-1. Linux canonical `verify` and artifact production;
-2. independent Windows `verify`;
-3. execution on Windows of the exact JAR uploaded by the Linux canonical job.
+1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project` gitlink;
+2. Java fixture verification:
+   - Linux canonical `verify` and artifact production;
+   - independent Windows `verify`;
+   - execution on Windows of the exact JAR uploaded by the Linux canonical job.
 
-Linux evidence also includes test reports and `toolchain-build-provenance.txt`.
+Linux Java evidence also includes test reports and `toolchain-build-provenance.txt`.
 
 ## Development workflow
 
 Changes use issue → feature branch → draft PR → evidence/review → merge.
-
-The initial bootstrap work is tracked in issue/PR #1.
