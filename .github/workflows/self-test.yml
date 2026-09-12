@@ -11,7 +11,38 @@ permissions:
   contents: read
 
 jobs:
+  bootstrap-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout without submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Bootstrap pinned Git tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bootstrap.sh
+          test "$(git -C tools/tool.git-project rev-parse HEAD)" = "5db2b23b95ad0a230ab5d5d2bed725927328fcfe"
+          tools/tool.git-project/git-project.sh validate --repo .
+          ./update-repo.sh
+
+  bootstrap-windows:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - name: Checkout without submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Bootstrap pinned Git tooling
+        shell: pwsh
+        run: |
+          .\bootstrap.ps1
+          $actual = (git -C tools/tool.git-project rev-parse HEAD).Trim()
+          if ($actual -ne "5db2b23b95ad0a230ab5d5d2bed725927328fcfe") { throw "Unexpected tool.git-project SHA: $actual" }
+          .\tools\tool.git-project\git-project.ps1 validate -RepoRoot .
+          .\update-repo.ps1
+
   fixture:
+    needs: [bootstrap-linux, bootstrap-windows]
     uses: ./.github/workflows/reusable-java-verify.yml
     with:
       working-directory: fixture/minimal-java-app
