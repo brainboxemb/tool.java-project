@@ -1,0 +1,227 @@
+name: Reusable Java verify
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Java project directory containing pom.xml and Maven Wrapper
+        required: false
+        type: string
+        default: .
+      java-version:
+        description: Exact Temurin Java version used by hosted CI
+        required: false
+        type: string
+        default: '8.0.504+1'
+      maven-version:
+        description: Maven version expected from the repository Maven Wrapper
+        required: false
+        type: string
+        default: '3.9.16'
+      maven-wrapper-version:
+        description: Maven Wrapper version expected in maven-wrapper.properties
+        required: false
+        type: string
+        default: '3.3.4'
+      artifact-name:
+        description: Name for the canonical Linux artifact upload
+        required: false
+        type: string
+        default: java-canonical-artifact
+      artifact-path:
+        description: Path relative to working-directory for canonical artifact upload
+        required: true
+        type: string
+      runnable-jar-name:
+        description: Optional JAR filename to execute from the canonical artifact on Windows
+        required: false
+        type: string
+        default: ''
+      smoke-expected-output:
+        description: Optional exact stdout expected from the Windows canonical-artifact smoke run
+        required: false
+        type: string
+        default: ''
+      test-report-path:
+        description: Glob relative to working-directory for Maven test reports
+        required: false
+        type: string
+        default: '**/target/surefire-reports/**'
+
+permissions:
+  contents: read
+
+jobs:
+  linux-canonical:
+    name: Linux canonical build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout consumer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up exact Java 8 baseline
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          check-latest: false
+          verify-signature: true
+          cache: maven
+          cache-dependency-path: ${{ inputs.working-directory }}/pom.xml
+
+      - name: Validate Maven Wrapper baseline
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f ./mvnw
+          test -x ./mvnw
+          test -f .mvn/wrapper/maven-wrapper.properties
+          grep -F "wrapperVersion=${{ inputs.maven-wrapper-version }}" .mvn/wrapper/maven-wrapper.properties
+          ./mvnw --version | tee /tmp/maven-version.txt
+          grep -F "Apache Maven ${{ inputs.maven-version }}" /tmp/maven-version.txt
+
+      - name: Verify
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        run: ./mvnw --batch-mode --no-transfer-progress verify
+
+      - name: Record canonical build provenance
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        env:
+          TOOLCHAIN_JAVA_VERSION: ${{ inputs.java-version }}
+          TOOLCHAIN_MAVEN_VERSION: ${{ inputs.maven-version }}
+          TOOLCHAIN_WRAPPER_VERSION: ${{ inputs.maven-wrapper-version }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p target
+          {
+            echo "toolchain_contract=1"
+            echo "repository=${GITHUB_REPOSITORY}"
+            echo "event_name=${GITHUB_EVENT_NAME}"
+            echo "checked_out_sha=${GITHUB_SHA}"
+            echo "source_ref=${GITHUB_REF}"
+            if [ -n "${PR_HEAD_SHA}" ]; then echo "pull_request_head_sha=${PR_HEAD_SHA}"; fi
+            if [ -n "${PR_BASE_SHA}" ]; then echo "pull_request_base_sha=${PR_BASE_SHA}"; fi
+            echo "workflow_ref=${GITHUB_WORKFLOW_REF}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            echo "java_baseline=${TOOLCHAIN_JAVA_VERSION}"
+            echo "maven_baseline=${TOOLCHAIN_MAVEN_VERSION}"
+            echo "maven_wrapper_baseline=${TOOLCHAIN_WRAPPER_VERSION}"
+            printf 'java_runtime='; java -version 2>&1 | head -n 1
+            printf 'maven_runtime='; ./mvnw --version | head -n 1
+          } > target/toolchain-build-provenance.txt
+          cat target/toolchain-build-provenance.txt
+
+      - name: Upload canonical Java artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.working-directory }}/${{ inputs.artifact-path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Linux evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ inputs.artifact-name }}-linux-evidence
+          path: |
+            ${{ inputs.working-directory }}/target/toolchain-build-provenance.txt
+            ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows-compatibility:
+    name: Windows compatibility build
+    runs-on: windows-2025
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout consumer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up exact Java 8 baseline
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          check-latest: false
+          verify-signature: true
+          cache: maven
+          cache-dependency-path: ${{ inputs.working-directory }}/pom.xml
+
+      - name: Validate Maven Wrapper baseline
+        working-directory: ${{ inputs.working-directory }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .\mvnw.cmd)) { throw 'mvnw.cmd is missing' }
+          if (-not (Test-Path .\.mvn\wrapper\maven-wrapper.properties)) { throw 'maven-wrapper.properties is missing' }
+          $wrapper = Get-Content -Raw .\.mvn\wrapper\maven-wrapper.properties | ConvertFrom-StringData
+          if ($wrapper.wrapperVersion -ne '${{ inputs.maven-wrapper-version }}') {
+            throw "Unexpected Maven Wrapper version: $($wrapper.wrapperVersion)"
+          }
+          $version = (& .\mvnw.cmd --version | Out-String)
+          Write-Host $version
+          if ($version -notmatch 'Apache Maven ${{ inputs.maven-version }}') {
+            throw 'Unexpected Maven version'
+          }
+
+      - name: Verify
+        working-directory: ${{ inputs.working-directory }}
+        shell: pwsh
+        run: .\mvnw.cmd --batch-mode --no-transfer-progress verify
+
+      - name: Upload Windows test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ inputs.artifact-name }}-windows-evidence
+          path: ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows-canonical-artifact-smoke:
+    name: Windows canonical-artifact smoke
+    if: ${{ inputs.runnable-jar-name != '' }}
+    needs: linux-canonical
+    runs-on: windows-2025
+    timeout-minutes: 5
+
+    steps:
+      - name: Set up exact Java 8 baseline
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java-version }}
+          check-latest: false
+          verify-signature: true
+
+      - name: Download canonical Linux artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: canonical-artifact
+
+      - name: Run canonical artifact on Windows
+        shell: pwsh
+        env:
+          SMOKE_EXPECTED_OUTPUT: ${{ inputs.smoke-expected-output }}
+        run: |
+          $jar = Join-Path 'canonical-artifact' '${{ inputs.runnable-jar-name }}'
+          if (-not (Test-Path $jar)) {
+            Write-Host 'Downloaded artifact contents:'
+            Get-ChildItem -Recurse canonical-artifact
+            throw "Runnable JAR not found: $jar"
+          }
+          $output = (& java -jar $jar | Out-String).Trim()
+          Write-Host $output
+          if ($env:SMOKE_EXPECTED_OUTPUT -and $output -ne $env:SMOKE_EXPECTED_OUTPUT) {
+            throw "Unexpected smoke output: $output"
+          }
