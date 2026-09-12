@@ -54,3 +54,13 @@ jobs:
       runnable-jar-name: minimal-java-app-0.1.0-SNAPSHOT.jar
       smoke-expected-output: 'tool.java-project fixture OK'
       test-report-path: target/surefire-reports/**
+      publication-artifact-paths: target/minimal-java-app-0.1.0-SNAPSHOT.jar
+
+  publish-fixture:
+    if: github.event_name == 'pull_request'
+    needs: fixture
+    permissions:
+      contents: write
+    uses: ./.github/workflows/reusable-java-publish.yml
+    with:
+      publication-artifact-name: minimal-java-app-canonical-publication
