@@ -1,0 +1,23 @@
+name: Self-test Java toolchain
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    uses: ./.github/workflows/reusable-java-verify.yml
+    with:
+      working-directory: fixture/minimal-java-app
+      java-version: '8.0.504+1'
+      maven-version: '3.9.16'
+      artifact-name: minimal-java-app-canonical
+      artifact-path: target/minimal-java-app-0.1.0-SNAPSHOT.jar
+      runnable-jar-name: minimal-java-app-0.1.0-SNAPSHOT.jar
+      test-report-path: target/surefire-reports/**
