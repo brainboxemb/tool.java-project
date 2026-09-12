@@ -25,7 +25,7 @@ Maven Wrapper      3.3.4
 
 The repository Maven Wrapper owns the Maven distribution. A globally installed Maven is not required by the workflow.
 
-## Reusable workflow
+## Reusable verification workflow
 
 A consumer calls `.github/workflows/reusable-java-verify.yml` from this repository.
 
@@ -46,6 +46,8 @@ permissions:
 
 jobs:
   java:
+    permissions:
+      contents: read
     uses: brainboxemb/tool.java-project/.github/workflows/reusable-java-verify.yml@<full-commit-sha>
     with:
       working-directory: .
@@ -61,7 +63,69 @@ jobs:
 
 `runnable-jar-name` is optional. If omitted, the Windows canonical-artifact smoke job is skipped. `smoke-expected-output` is also optional; when supplied, the job requires exact trimmed stdout from `java -jar`.
 
-## What the reusable workflow proves
+## Optional generated build publication
+
+A consumer that wants browsable build output can ask the verification workflow to prepare selected canonical files and then call the separate publication workflow.
+
+The convention is:
+
+```text
+pull request #N -> dev/pr-N/bld
+push to main   -> prod/bld
+```
+
+Example:
+
+```yaml
+jobs:
+  java:
+    permissions:
+      contents: read
+    uses: brainboxemb/tool.java-project/.github/workflows/reusable-java-verify.yml@<full-commit-sha>
+    with:
+      working-directory: .
+      java-version: '8.0.504+1'
+      maven-version: '3.9.16'
+      maven-wrapper-version: '3.3.4'
+      artifact-name: my-app-canonical
+      artifact-path: target/my-app.jar
+      runnable-jar-name: my-app.jar
+      publication-artifact-paths: |
+        target/my-library.jar
+        target/my-app.jar
+
+  publish-build:
+    needs: java
+    permissions:
+      contents: write
+    uses: brainboxemb/tool.java-project/.github/workflows/reusable-java-publish.yml@<same-full-commit-sha>
+    with:
+      publication-artifact-name: my-app-canonical-publication
+```
+
+`publication-artifact-paths` is a newline-separated list of exact files relative to `working-directory`. The canonical Linux build must have produced each listed file. The preparation step copies those files by basename into the publication bundle and rejects basename collisions.
+
+The generated branch contains:
+
+```text
+artifacts/
+  <selected canonical build files>
+
+evidence/
+  toolchain-build-provenance.txt
+  tests/...
+
+README.md
+source-sha.txt
+```
+
+The publication job does **not** run Maven again. It downloads the publication bundle prepared by the canonical Linux job and force-replaces the generated branch contents.
+
+Publication is deliberately separate from verification so the normal build jobs remain read-only. A same-repository pull request can publish `dev/pr-N/bld`; a fork pull request is skipped rather than receiving repository write access. Only a `main` push publishes `prod/bld`.
+
+Temporary Actions artifacts remain available for CI job-to-job transfer and short-lived downloads. The generated branch is the convenient browsable representation of selected build output and evidence.
+
+## What the reusable verification workflow proves
 
 ### Linux canonical build
 
@@ -73,7 +137,8 @@ The Linux job:
 4. runs `./mvnw verify`;
 5. records build provenance;
 6. uploads the configured canonical artifact;
-7. uploads test/provenance evidence.
+7. uploads test/provenance evidence;
+8. when configured, prepares and uploads a generated-publication bundle from that same build.
 
 Linux is the canonical artifact producer for the initial toolchain.
 
@@ -116,6 +181,8 @@ The Linux evidence contains `target/toolchain-build-provenance.txt`, including:
 
 For pull-request workflows GitHub may build a synthetic PR merge commit. The provenance therefore records the actually built SHA separately from the pull-request head/base SHA.
 
+Generated publication also contains `source-sha.txt`. For pull requests this identifies the pull-request head SHA; the provenance file still records the exact merge/check-out SHA that produced the canonical build.
+
 ## Versioning and pinning policy
 
 Initial/pre-v1 policy:
@@ -128,6 +195,6 @@ After the workflow contract has been exercised by real consumers, the repository
 
 ## Docker
 
-Docker is intentionally **not required** by this workflow. Java compilation/unit tests need only the provisioned JDK plus the repository Maven Wrapper.
+Docker is intentionally **not required** by these workflows. Java compilation/unit tests need only the provisioned JDK plus the repository Maven Wrapper.
 
 Consumers may use Docker/Compose in separate integration jobs when a real external service makes it useful, such as RabbitMQ. Those integration fixtures should not become a prerequisite for the fast generic Java verify path.

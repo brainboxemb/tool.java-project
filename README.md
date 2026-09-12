@@ -1,12 +1,12 @@
 # tool.java-project
 
-Reusable Java/Maven engineering tooling for reproducible Linux/Windows builds, testing, CI workflows, artifacts, and build provenance.
+Reusable Java/Maven engineering tooling for reproducible Linux/Windows builds, testing, CI workflows, artifacts, build provenance, and generated build-output publication.
 
 ## Purpose
 
 This repository owns generic Java-project engineering behaviour that can be reused by product repositories. It deliberately does **not** own product/domain behaviour.
 
-The Java tool now sits on top of the generic Git-project bootstrap layer:
+The Java tool sits on top of the generic Git-project bootstrap layer:
 
 ```text
 consumer repository
@@ -21,7 +21,7 @@ consumer repository
   Maven Wrapper / Java verification / reusable CI
 ```
 
-The initial Java baseline proves:
+The Java baseline proves:
 
 ```text
 clean checkout
@@ -39,6 +39,19 @@ provenance
 Windows compatibility execution of that exact artifact
 ```
 
+Consumers may additionally opt in to generated build publication:
+
+```text
+canonical Linux build
+    ↓
+prepared publication bundle
+    ↓
+PR     → dev/pr-N/bld
+main   → prod/bld
+```
+
+The publication step reuses the canonical build; it does not run a second Maven build merely to populate the generated branch.
+
 ## Initial toolchain baseline
 
 - Java: Eclipse Temurin 8u504-b01 for hosted Linux/Windows CI;
@@ -49,7 +62,7 @@ Windows compatibility execution of that exact artifact
 - compatibility environment: GitHub-hosted Windows;
 - Docker: not required for normal compile/unit-test paths.
 
-The baseline values are also recorded in `project.java.yml`. The existing reusable workflow continues to take explicit inputs in this revision; later tooling may validate/read the Java profile directly once the profile contract has been exercised by real consumers.
+The baseline values are also recorded in `project.java.yml`. The reusable workflows continue to take explicit inputs in this revision; later tooling may validate/read the Java profile directly once the profile contract has been exercised by real consumers.
 
 ## Local checkout and bootstrap
 
@@ -79,20 +92,21 @@ For this repository `project.yml` currently has no additional managed externals;
 
 ```text
 .github/workflows/
-  reusable-java-verify.yml   reusable consumer workflow
-  self-test.yml              local-bootstrap + Java fixture proof
+  reusable-java-verify.yml    reusable canonical build/test workflow
+  reusable-java-publish.yml   optional generated build-output publisher
+  self-test.yml               local-bootstrap + Java fixture proof
 
 docs/
-  consumer-usage.md          workflow contract, pinning and evidence model
+  consumer-usage.md           workflow contract, pinning and evidence model
 
 fixture/
-  minimal-java-app/          generic runnable Java 8 test fixture
+  minimal-java-app/           generic runnable Java 8 test fixture
 
 tools/
-  tool.git-project/          pinned bootstrap submodule
+  tool.git-project/           pinned bootstrap submodule
 
-project.yml                  generic repository/profile declaration
-project.java.yml             Java-specific baseline
+project.yml                   generic repository/profile declaration
+project.java.yml              Java-specific baseline
 bootstrap.ps1 / bootstrap.sh
 update-repo.ps1 / update-repo.sh
 AGENTS.md
@@ -102,11 +116,11 @@ README.md
 
 ## Consumer direction
 
-A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper. It can use the same generic Git bootstrap pattern locally and call the reusable workflow from this repository using a deliberate pinned reference.
+A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper. It can use the same generic Git bootstrap pattern locally and call the reusable workflows from this repository using a deliberate pinned reference.
 
 See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete CI contract and example caller workflow.
 
-The reusable workflow provides generic Java behaviour such as:
+The reusable verification workflow provides generic Java behaviour such as:
 
 - explicit Java provisioning;
 - Maven Wrapper version/use validation;
@@ -114,9 +128,35 @@ The reusable workflow provides generic Java behaviour such as:
 - test-report/artifact collection;
 - build provenance;
 - Windows compatibility verification;
-- canonical-artifact execution smoke tests when configured.
+- canonical-artifact execution smoke tests when configured;
+- optional staging of selected canonical build files for generated publication.
+
+The separate publication workflow can publish that prepared bundle as:
+
+- `dev/pr-<PR-number>/bld` for a same-repository pull request;
+- `prod/bld` for a push to `main`.
+
+Keeping publication separate allows normal verification jobs to remain read-only. Fork pull requests do not publish generated branches.
 
 Product repositories remain responsible for their own source code, dependencies, tests, module layout and product-specific configuration.
+
+## Generated build-output boundary
+
+A generated `bld` branch contains build output/evidence only. A typical tree is:
+
+```text
+artifacts/
+  <selected canonical build files>
+
+evidence/
+  toolchain-build-provenance.txt
+  tests/...
+
+README.md
+source-sha.txt
+```
+
+It must not contain a source checkout or managed tooling repositories. Temporary Actions artifacts continue to exist for job-to-job transfer and short-lived downloads; the generated branch is the convenient browsable view.
 
 ## Boundaries
 
@@ -132,13 +172,14 @@ Docker/Compose may be introduced by consumers for real external-service integrat
 
 ## Evidence
 
-The repository self-test proves two independent layers:
+The repository self-test proves independent layers:
 
 1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project` gitlink;
 2. Java fixture verification:
    - Linux canonical `verify` and artifact production;
    - independent Windows `verify`;
-   - execution on Windows of the exact JAR uploaded by the Linux canonical job.
+   - execution on Windows of the exact JAR uploaded by the Linux canonical job;
+3. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld`.
 
 Linux Java evidence also includes test reports and `toolchain-build-provenance.txt`.
 
