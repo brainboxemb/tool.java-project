@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: '3.9.16'
+      maven-wrapper-version:
+        description: Maven Wrapper version expected in maven-wrapper.properties
+        required: false
+        type: string
+        default: '3.3.4'
       artifact-name:
         description: Name for the canonical Linux artifact upload
         required: false
@@ -29,6 +34,11 @@ on:
         type: string
       runnable-jar-name:
         description: Optional JAR filename to execute from the canonical artifact on Windows
+        required: false
+        type: string
+        default: ''
+      smoke-expected-output:
+        description: Optional exact stdout expected from the Windows canonical-artifact smoke run
         required: false
         type: string
         default: ''
@@ -69,6 +79,7 @@ jobs:
           test -f ./mvnw
           test -x ./mvnw
           test -f .mvn/wrapper/maven-wrapper.properties
+          grep -F "wrapperVersion=${{ inputs.maven-wrapper-version }}" .mvn/wrapper/maven-wrapper.properties
           ./mvnw --version | tee /tmp/maven-version.txt
           grep -F "Apache Maven ${{ inputs.maven-version }}" /tmp/maven-version.txt
 
@@ -83,18 +94,26 @@ jobs:
         env:
           TOOLCHAIN_JAVA_VERSION: ${{ inputs.java-version }}
           TOOLCHAIN_MAVEN_VERSION: ${{ inputs.maven-version }}
+          TOOLCHAIN_WRAPPER_VERSION: ${{ inputs.maven-wrapper-version }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: |
           set -euo pipefail
           mkdir -p target
           {
+            echo "toolchain_contract=1"
             echo "repository=${GITHUB_REPOSITORY}"
-            echo "source_sha=${GITHUB_SHA}"
+            echo "event_name=${GITHUB_EVENT_NAME}"
+            echo "checked_out_sha=${GITHUB_SHA}"
             echo "source_ref=${GITHUB_REF}"
+            if [ -n "${PR_HEAD_SHA}" ]; then echo "pull_request_head_sha=${PR_HEAD_SHA}"; fi
+            if [ -n "${PR_BASE_SHA}" ]; then echo "pull_request_base_sha=${PR_BASE_SHA}"; fi
             echo "workflow_ref=${GITHUB_WORKFLOW_REF}"
             echo "runner_os=${RUNNER_OS}"
             echo "runner_arch=${RUNNER_ARCH}"
             echo "java_baseline=${TOOLCHAIN_JAVA_VERSION}"
             echo "maven_baseline=${TOOLCHAIN_MAVEN_VERSION}"
+            echo "maven_wrapper_baseline=${TOOLCHAIN_WRAPPER_VERSION}"
             printf 'java_runtime='; java -version 2>&1 | head -n 1
             printf 'maven_runtime='; ./mvnw --version | head -n 1
           } > target/toolchain-build-provenance.txt
@@ -144,10 +163,14 @@ jobs:
         run: |
           if (-not (Test-Path .\mvnw.cmd)) { throw 'mvnw.cmd is missing' }
           if (-not (Test-Path .\.mvn\wrapper\maven-wrapper.properties)) { throw 'maven-wrapper.properties is missing' }
+          $wrapper = Get-Content -Raw .\.mvn\wrapper\maven-wrapper.properties | ConvertFrom-StringData
+          if ($wrapper.wrapperVersion -ne '${{ inputs.maven-wrapper-version }}') {
+            throw "Unexpected Maven Wrapper version: $($wrapper.wrapperVersion)"
+          }
           $version = (& .\mvnw.cmd --version | Out-String)
           Write-Host $version
           if ($version -notmatch 'Apache Maven ${{ inputs.maven-version }}') {
-            throw 'Unexpected Maven Wrapper version'
+            throw 'Unexpected Maven version'
           }
 
       - name: Verify
@@ -188,6 +211,8 @@ jobs:
 
       - name: Run canonical artifact on Windows
         shell: pwsh
+        env:
+          SMOKE_EXPECTED_OUTPUT: ${{ inputs.smoke-expected-output }}
         run: |
           $jar = Join-Path 'canonical-artifact' '${{ inputs.runnable-jar-name }}'
           if (-not (Test-Path $jar)) {
@@ -197,6 +222,6 @@ jobs:
           }
           $output = (& java -jar $jar | Out-String).Trim()
           Write-Host $output
-          if ($output -ne 'tool.java-project fixture OK') {
-            throw "Unexpected fixture output: $output"
+          if ($env:SMOKE_EXPECTED_OUTPUT -and $output -ne $env:SMOKE_EXPECTED_OUTPUT) {
+            throw "Unexpected smoke output: $output"
           }
