@@ -43,11 +43,11 @@ The first real product consumer will be created only after this repository can p
   reusable-java-verify.yml   reusable consumer workflow
   self-test.yml              repository/fixture proof
 
+docs/
+  consumer-usage.md          workflow contract, pinning and evidence model
+
 fixture/
   minimal-java-app/          generic runnable Java 8 test fixture
-
-scripts/
-  collect-build-info.py      build provenance helper
 
 AGENTS.md
 CHANGELOG.md
@@ -56,14 +56,17 @@ README.md
 
 ## Consumer direction
 
-A consumer repository should keep its own `pom.xml` and Maven Wrapper, then call a versioned/pinned reusable workflow from this repository.
+A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper, then calls the reusable workflow from this repository using a deliberate pinned reference.
 
-The reusable workflow is intended to provide generic behaviour such as:
+See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete contract and example caller workflow.
+
+The reusable workflow provides generic behaviour such as:
 
 - explicit Java provisioning;
-- Maven Wrapper validation/use;
+- Maven Wrapper version/use validation;
 - Linux canonical verification and artifact production;
 - test-report/artifact collection;
+- build provenance;
 - Windows compatibility verification;
 - canonical-artifact execution smoke tests when configured.
 
@@ -80,6 +83,16 @@ Do not add product-specific assumptions here, including:
 - Docker services merely because a Java build exists.
 
 Docker/Compose may be introduced by consumers for real external-service integration tests such as RabbitMQ, but it is not part of the fast Java build baseline.
+
+## Evidence
+
+The repository self-test uses the generic fixture to prove all three initial paths:
+
+1. Linux canonical `verify` and artifact production;
+2. independent Windows `verify`;
+3. execution on Windows of the exact JAR uploaded by the Linux canonical job.
+
+Linux evidence also includes test reports and `toolchain-build-provenance.txt`.
 
 ## Development workflow
 
