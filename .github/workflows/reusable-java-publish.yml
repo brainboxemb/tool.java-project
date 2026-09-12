@@ -1,0 +1,75 @@
+name: Reusable Java build publication
+
+on:
+  workflow_call:
+    inputs:
+      publication-artifact-name:
+        description: Actions artifact containing the prepared generated build-output tree
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish generated build output
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout source reference
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Download prepared publication tree
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ${{ inputs.publication-artifact-name }}
+          path: ${{ runner.temp }}/java-build-publication
+
+      - name: Publish generated branch
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          publish_dir="${RUNNER_TEMP}/java-build-publication"
+          test -f "${publish_dir}/source-sha.txt"
+          test -f "${publish_dir}/README.md"
+          test -d "${publish_dir}/artifacts"
+          test -d "${publish_dir}/evidence"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            if [[ ! "${PR_NUMBER}" =~ ^[1-9][0-9]*$ ]]; then
+              echo "ERROR: missing or invalid pull-request number" >&2
+              exit 1
+            fi
+            target_branch="dev/pr-${PR_NUMBER}/bld"
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            target_branch="prod/bld"
+          else
+            echo "Build publication is only defined for pull requests and main pushes; skipping ${GITHUB_REF}."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global credential.helper store
+          printf 'https://x-access-token:%s@github.com\n' "${GITHUB_TOKEN}" > ~/.git-credentials
+
+          git switch --orphan generated-build-output
+          git clean -fdx
+          cp -a "${publish_dir}/." ./
+
+          git add .
+          git commit -m "Publish Java build output for $(cat source-sha.txt)"
+          git push --force origin "HEAD:${target_branch}"
+
+          echo "Published Java build output to ${target_branch}"
