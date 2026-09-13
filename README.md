@@ -81,16 +81,19 @@ See [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the a
 
 `VERSION` is the source-controlled release version of `tool.java-project`; it is independent of the Maven version used by any product or fixture. A release tag is `v<VERSION>`.
 
-The first released Java-project tooling baseline is:
+The v0.1.1 release line contains the production-transition Java boundary:
 
 ```text
-tool.java-project   v0.1.0
+tool.java-project   v0.1.1
 Java CI baseline    Eclipse Temurin 8.0.504+1
 Maven               3.9.16
 Maven Wrapper       3.3.4
+tool.git-project    v0.1.0 / 2a3dc34a792061856071096cea7da2b87fc61f12
 ```
 
-A consumer should express the semantic tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to the exact commit behind that release tag. This gives people a readable version while keeping workflow composition immutable.
+A consumer should express the semantic Java-tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to the exact commit behind that release tag. This gives people a readable version while keeping workflow composition immutable.
+
+Generic repository-lifecycle workflows are consumed from their own released owner. Java PR-preview cleanup therefore calls the released `tool.git-project v0.1.0` workflow rather than copying Git branch-deletion logic into this repository.
 
 The intended external-consumer model mirrors the SCAD project family:
 
@@ -141,6 +144,8 @@ cd tool.java-project
 
 The root launcher restores the exact committed `tools/tool.git-project` gitlink and delegates generic dependency handling to it. `update-repo.ps1` / `update-repo.sh` perform the controlled generic dependency-update pass after bootstrap.
 
+The v0.1.1 line pins that bootstrap gitlink to the exact `tool.git-project v0.1.0` release commit. This also carries the generic dirty-worktree-before-checkout protection verified on Linux and Windows.
+
 For this repository `project.yml` currently has no additional managed externals; it exists to establish the shared generic/project-profile structure and to prove the same local flow consumers will use.
 
 ## Repository structure
@@ -149,6 +154,7 @@ For this repository `project.yml` currently has no additional managed externals;
 .github/workflows/
   reusable-java-verify.yml    reusable canonical build/test workflow
   reusable-java-publish.yml   optional generated build-output publisher
+  pr-cleanup.yml              thin caller of tagged generic Git cleanup
   local-action-test.yml       direct stable-action fixture proof
   self-test.yml               local-bootstrap + Java fixture proof
   release.yml                 exact-commit tool release/tag dispatcher
@@ -202,7 +208,20 @@ The separate publication workflow can publish that prepared bundle as:
 
 Keeping publication separate allows normal verification jobs to remain read-only. Fork pull requests do not publish generated branches.
 
-Product repositories remain responsible for their own source code, dependencies, tests, module layout and product-specific configuration.
+## PR-preview cleanup
+
+`dev/pr-<N>/bld` is temporary review output. When the pull request closes, `.github/workflows/pr-cleanup.yml` delegates branch cleanup to the released generic Git workflow:
+
+```text
+brainboxemb/tool.git-project/.github/workflows/
+  reusable-pr-preview-cleanup.yml@v0.1.0
+```
+
+Java supplies only its domain-owned preview suffix, `bld`. `tool.git-project` owns the branch deletion mechanics and constrains targets to `dev/pr-<positive integer>/<validated suffix>`.
+
+The caller also exposes `workflow_dispatch` with a PR number for deliberate cleanup of a stale legacy preview. Manual cleanup does not request source-branch deletion; automatic cleanup may delete the merged same-repository source branch.
+
+Product repositories should follow the same thin-caller pattern rather than copy Git deletion scripts.
 
 ## Generated build-output boundary
 
@@ -260,15 +279,16 @@ Docker/Compose may be introduced by consumers for real external-service integrat
 
 The repository self-test proves independent layers:
 
-1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project` gitlink;
+1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project v0.1.0` gitlink;
 2. the stable local canonical action against the internal fixture;
 3. Java fixture verification through the reusable workflow:
    - Linux canonical action and artifact production;
    - independent Windows `verify`;
    - execution on Windows of the exact JAR uploaded by the Linux canonical job;
 4. readable Surefire summary generated from the canonical test XML without rerunning tests;
-5. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld`;
-6. on a release tag, repetition of the self-test before the GitHub Release is published.
+5. the Java cleanup caller is pinned to released `tool.git-project@v0.1.0`;
+6. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld`;
+7. on a release tag, repetition of the self-test before the GitHub Release is published.
 
 Linux Java evidence also includes test reports, `toolchain-build-provenance.txt` and `java-canonical-execution.log`. The prepared publication tree carries the execution log as `evidence/execution.log`.
 

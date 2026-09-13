@@ -1,0 +1,35 @@
+name: Cleanup Java PR previews
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number whose dev/pr-N/bld preview should be removed
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup-closed-pr:
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      contents: write
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.0
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      preview_suffixes: bld
+      delete_source_branch: true
+
+  cleanup-manual:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    permissions:
+      contents: write
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.0
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      preview_suffixes: bld
+      delete_source_branch: false
