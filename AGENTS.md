@@ -6,7 +6,8 @@ This repository contains reusable Java/Maven engineering tooling. Keep it generi
 
 ## Core rules
 
-- Use issue → feature branch → draft PR → evidence/review → merge.
+- Use one work-item number end to end: create issue `#N`, create `feature/pr-N-<short-slug>`, make the smallest initial commit, then convert that exact issue directly into draft PR `#N`; do not create a separate PR number for the same work item when issue conversion is available.
+- Continue implementation, evidence/review and merge in that same PR.
 - Do not commit directly to `main` for normal work.
 - Keep product/domain behaviour out of this repository.
 - Consumer repositories keep their own product source, POM/module layout and product tests.
