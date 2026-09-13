@@ -1,0 +1,74 @@
+name: Local canonical action test
+
+on:
+  pull_request:
+    paths:
+      - 'java-project.sh'
+      - 'support/**'
+      - 'fixture/minimal-java-app/**'
+      - '.github/workflows/local-action-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-action:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up exact Java baseline
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '8.0.504+1'
+          check-latest: false
+          verify-signature: true
+          cache: maven
+          cache-dependency-path: fixture/minimal-java-app/pom.xml
+
+      - name: Run stable local canonical action
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash ./java-project.sh canonical \
+            --working-directory fixture/minimal-java-app \
+            --java-version '8.0.504+1' \
+            --maven-version '3.9.16' \
+            --maven-wrapper-version '3.3.4' \
+            --test-report-path 'target/surefire-reports/**' \
+            --source-revision "$GITHUB_SHA" \
+            --repository 'brainboxemb/tool.java-project-fixture' \
+            --publication-root target/java-build-publication \
+            --publication-artifact target/minimal-java-app-0.1.0-SNAPSHOT.jar
+
+      - name: Validate canonical output and evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='fixture/minimal-java-app/target/java-build-publication'
+          test -s "$root/artifacts/minimal-java-app-0.1.0-SNAPSHOT.jar"
+          test -s "$root/evidence/execution.log"
+          test -s "$root/evidence/toolchain-build-provenance.txt"
+          test -s "$root/evidence/tests/README.md"
+          test -f "$root/evidence/tests/target/surefire-reports/TEST-com.brainboxemb.tool.fixture.AppTest.xml"
+          test -f "$root/source-sha.txt"
+          test -f "$root/README.md"
+          grep -Fq '**Status: PASS**' "$root/evidence/tests/README.md"
+          grep -Fq '| 1 | 0 | 0 | 0 |' "$root/evidence/tests/README.md"
+          grep -Fq 'toolchain_contract=2' "$root/evidence/toolchain-build-provenance.txt"
+          grep -Fq 'tool_java_project_revision=' "$root/evidence/toolchain-build-provenance.txt"
+          grep -Fq '[Canonical execution log](evidence/execution.log)' "$root/README.md"
+
+      - name: Upload local-action evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: local-java-canonical-action
+          path: fixture/minimal-java-app/target/java-build-publication
+          if-no-files-found: warn
+          retention-days: 14
