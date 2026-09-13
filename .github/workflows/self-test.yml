@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  GIT_TOOL_RELEASE_SHA: bcbec20c33ef924a83ec9e9e8264547de0b331e6
+  GIT_TOOL_RELEASE_SHA: 8c83215b8e81e7504a659e603bfbab79871ab0ae
 
 jobs:
   release-metadata:
@@ -48,8 +48,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.1' .github/workflows/pr-cleanup.yml
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.1' .github/workflows/reusable-java-publish.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.1.3' .github/workflows/release.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.3' .github/workflows/pr-cleanup.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.3' .github/workflows/reusable-java-publish.yml
           test "$(git ls-tree HEAD tools/tool.git-project | awk '{print $3}')" = "${GIT_TOOL_RELEASE_SHA}"
 
   bootstrap-linux:
@@ -168,6 +169,8 @@ jobs:
           Maven Wrapper baseline: 3.3.4
           EOF
       - name: Create GitHub Release
+        # This remains Java-owned because the Release carries Java/JDK/Maven
+        # provenance that the generic repository lifecycle must not invent.
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
