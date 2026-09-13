@@ -18,7 +18,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     permissions:
       contents: write
-    uses: brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.0
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.1
     with:
       pr_number: ${{ github.event.pull_request.number }}
       preview_suffixes: bld
@@ -28,7 +28,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: write
-    uses: brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.0
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.1
     with:
       pr_number: ${{ inputs.pr_number }}
       preview_suffixes: bld
