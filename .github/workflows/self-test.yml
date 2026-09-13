@@ -56,9 +56,30 @@ jobs:
       test-report-path: target/surefire-reports/**
       publication-artifact-paths: target/minimal-java-app-0.1.0-SNAPSHOT.jar
 
+  verify-test-summary:
+    needs: fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Download prepared publication
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: minimal-java-app-canonical-publication
+          path: publication
+      - name: Verify readable Surefire summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f publication/evidence/tests/README.md
+          grep -F '# Unit test report' publication/evidence/tests/README.md
+          grep -F '**Status: PASS**' publication/evidence/tests/README.md
+          grep -F '| 1 | 0 | 0 | 0 |' publication/evidence/tests/README.md
+          grep -F 'com.brainboxemb.tool.fixture.AppTest' publication/evidence/tests/README.md
+          grep -F '[Readable Surefire summary](evidence/tests/README.md)' publication/README.md
+
   publish-fixture:
     if: github.event_name == 'pull_request'
-    needs: fixture
+    needs: [fixture, verify-test-summary]
     permissions:
       contents: write
     uses: ./.github/workflows/reusable-java-publish.yml

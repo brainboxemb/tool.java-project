@@ -9,3 +9,4 @@
   - `main` -> `prod/bld`;
   - selected canonical artifacts, provenance and test evidence;
   - separate read-only verification and write-enabled publication workflows.
+- Generate a human-readable `evidence/tests/README.md` from the canonical Surefire XML without rerunning tests, including overall, module and suite totals plus failure/error details.
