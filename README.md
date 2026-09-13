@@ -82,19 +82,19 @@ See [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the a
 
 `VERSION` is the source-controlled release version of `tool.java-project`; it is independent of the Maven version used by any product or fixture. A release tag is `v<VERSION>`.
 
-The v0.1.2 release line contains the production-transition Java boundary plus the generic generated-output lifecycle:
+The v0.1.2 release line contains the production-transition Java boundary plus the shared repository lifecycle:
 
 ```text
 tool.java-project   v0.1.2
 Java CI baseline    Eclipse Temurin 8.0.504+1
 Maven               3.9.16
 Maven Wrapper       3.3.4
-tool.git-project    v0.1.1 / bcbec20c33ef924a83ec9e9e8264547de0b331e6
+tool.git-project    v0.1.2 / 36de880e7235e58813d02cd23a4f05c7e64e9b9d
 ```
 
 A consumer should express the semantic Java-tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to a deliberate released interface. This gives people a readable version while keeping cross-repository workflow composition controlled.
 
-Generic repository-lifecycle workflows are consumed from their own released owner. Java generated-output publication and PR-preview cleanup therefore call released `tool.git-project v0.1.1` workflows rather than copying Git branch-selection, push, or deletion logic into this repository.
+Generic repository-lifecycle workflows are consumed from their own released owner. Java release-request/tag orchestration, generated-output publication and PR-preview cleanup therefore call released `tool.git-project v0.1.2` workflows rather than copying Git validation, tag, branch-selection, push or deletion logic into this repository.
 
 The intended external-consumer model mirrors the SCAD project family:
 
@@ -145,7 +145,7 @@ cd tool.java-project
 
 The root launcher restores the exact committed `tools/tool.git-project` gitlink and delegates generic dependency handling to it. `update-repo.ps1` / `update-repo.sh` perform the controlled generic dependency-update pass after bootstrap.
 
-The v0.1.2 line pins that bootstrap gitlink to the exact `tool.git-project v0.1.1` release commit. This carries both the dirty-worktree-before-checkout protection and the generic generated-output/preview lifecycle used by Java CI.
+The v0.1.2 line pins that bootstrap gitlink to the exact `tool.git-project v0.1.2` release commit. This carries dirty-worktree-before-checkout protection plus the generic preview cleanup, generated-output publication and release-request/tag lifecycle used by Java CI.
 
 For this repository `project.yml` currently has no additional managed externals; it exists to establish the shared generic/project-profile structure and to prove the same local flow consumers will use.
 
@@ -157,9 +157,8 @@ For this repository `project.yml` currently has no additional managed externals;
   reusable-java-publish.yml   thin bld wrapper around generic Git publisher
   pr-cleanup.yml              thin caller of tagged generic Git cleanup
   local-action-test.yml       direct stable-action fixture proof
-  self-test.yml               local-bootstrap + Java fixture proof
-  release.yml                 exact-commit tool release/tag dispatcher
-
+  self-test.yml               local-bootstrap + Java fixture/release proof
+  release.yml                 thin caller of generic repository release lifecycle
 docs/
   consumer-usage.md           workflow contract, pinning and evidence model
   local-canonical-action.md   stable local domain-action contract
@@ -216,7 +215,7 @@ Keeping preparation separate from publication allows normal verification jobs to
 
 ```text
 brainboxemb/tool.git-project/.github/workflows/
-  reusable-pr-preview-cleanup.yml@v0.1.1
+  reusable-pr-preview-cleanup.yml@v0.1.2
 ```
 
 Java supplies only its domain-owned preview suffix, `bld`. `tool.git-project` owns the branch deletion mechanics and constrains targets to `dev/pr-<positive integer>/<validated suffix>`.
@@ -252,17 +251,16 @@ The build/preparation action remains separate from publication. This is importan
 
 A tool release is prepared by a normal reviewed PR that sets a non-SNAPSHOT `VERSION` and moves the corresponding changes from `Unreleased` into a dated CHANGELOG section.
 
-After the release-preparation commit is merged and its normal `main` self-test is green, `.github/workflows/release.yml` is given the intended `vX.Y.Z` and the exact already-verified `main` commit SHA. The release workflow refuses a version/tag mismatch, a non-current `main` SHA, an existing tag or a missing CHANGELOG release section.
+After the release-preparation commit is merged and its normal `main` self-test and local-action test are green, `.github/workflows/release.yml` calls the released generic repository lifecycle in `tool.git-project v0.1.2`. That generic layer validates the exact current `main` SHA, `VERSION`, CHANGELOG section and required main workflow results, creates the annotated `vX.Y.Z` tag, dispatches `self-test.yml` at that tag, waits for it, and removes the temporary release-request branch.
 
-The workflow then:
+The tagged Java self-test then owns the Java-specific half of release finalization:
 
-1. creates an annotated immutable `vX.Y.Z` tag on the exact verified commit;
-2. explicitly dispatches `self-test.yml` at that tag;
-3. reruns Linux/Windows bootstrap, fixture build/test, canonical artifact smoke and readable Surefire evidence from the tagged source;
-4. publishes the prepared canonical build tree through `tool.git-project` to `rel/vX.Y.Z/bld`;
-5. only after the tagged self-test and persistent release-output publication are green, creates the GitHub Release and attaches a small release-provenance manifest.
+1. rerun Linux/Windows bootstrap, fixture build/test, canonical artifact smoke and readable Surefire evidence from the tagged source;
+2. publish the prepared canonical build tree through `tool.git-project` to `rel/vX.Y.Z/bld`;
+3. prepare Java/JDK/Maven/Maven-Wrapper provenance;
+4. only after the tagged test and persistent release-output publication are green, create the Java GitHub Release and attach its provenance manifest.
 
-Consumers remain on the last released tag until they deliberately update.
+This separation keeps generic Git/repository release mechanics out of Java while retaining Java-specific release evidence with its semantic owner. Consumers remain on the last released tag until they deliberately update.
 
 ## Boundaries
 
@@ -282,20 +280,20 @@ Docker/Compose may be introduced by consumers for real external-service integrat
 
 The repository self-test proves independent layers:
 
-1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project v0.1.1` gitlink;
+1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project v0.1.2` gitlink;
 2. the stable local canonical action against the internal fixture;
 3. Java fixture verification through the reusable workflow:
    - Linux canonical action and artifact production;
    - independent Windows `verify`;
    - execution on Windows of the exact JAR uploaded by the Linux canonical job;
 4. readable Surefire summary generated from the canonical test XML without rerunning tests;
-5. Java publication and cleanup callers are pinned to released `tool.git-project@v0.1.1`;
+5. Java release, publication and cleanup callers are pinned to released `tool.git-project@v0.1.2`;
 6. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld` through the generic publisher;
 7. on `main`, publication to `prod/bld` through the same generic publisher;
-8. on a release tag, publication to `rel/vX.Y.Z/bld` before the GitHub Release is published.
+8. on a release tag, publication to `rel/vX.Y.Z/bld` before the Java GitHub Release is published.
 
 Linux Java evidence also includes test reports, `toolchain-build-provenance.txt` and `java-canonical-execution.log`. The prepared publication tree carries the execution log as `evidence/execution.log`.
 
 ## Development workflow
 
-Changes use issue → feature branch → draft PR → evidence/review → merge.
+Follow [`AGENTS.md`](AGENTS.md): reserve issue `#N`, create `feature/pr-N-<short-slug>`, make the smallest initial commit, convert that same issue directly into draft PR `#N`, and continue evidence/review in that same work item before merge.
