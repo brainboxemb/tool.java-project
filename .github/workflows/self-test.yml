@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  GIT_TOOL_RELEASE_SHA: 36de880e7235e58813d02cd23a4f05c7e64e9b9d
+  GIT_TOOL_RELEASE_SHA: 8c83215b8e81e7504a659e603bfbab79871ab0ae
 
 jobs:
   release-metadata:
@@ -48,9 +48,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.1.2' .github/workflows/release.yml
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.2' .github/workflows/pr-cleanup.yml
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.2' .github/workflows/reusable-java-publish.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.1.3' .github/workflows/release.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.3' .github/workflows/pr-cleanup.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.3' .github/workflows/reusable-java-publish.yml
           test "$(git ls-tree HEAD tools/tool.git-project | awk '{print $3}')" = "${GIT_TOOL_RELEASE_SHA}"
 
   bootstrap-linux:
