@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  GIT_TOOL_RELEASE_SHA: 2a3dc34a792061856071096cea7da2b87fc61f12
+  GIT_TOOL_RELEASE_SHA: bcbec20c33ef924a83ec9e9e8264547de0b331e6
 
 jobs:
   release-metadata:
@@ -44,11 +44,12 @@ jobs:
           fi
 
           echo "tool.java-project version=${TOOL_VERSION} ref=${GITHUB_REF}"
-      - name: Validate generic cleanup release pin
+      - name: Validate generic Git lifecycle release pin
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.0' .github/workflows/pr-cleanup.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.1' .github/workflows/pr-cleanup.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.1' .github/workflows/reusable-java-publish.yml
           test "$(git ls-tree HEAD tools/tool.git-project | awk '{print $3}')" = "${GIT_TOOL_RELEASE_SHA}"
 
   bootstrap-linux:
@@ -118,7 +119,10 @@ jobs:
           grep -F '[Readable Surefire summary](evidence/tests/README.md)' publication/README.md
 
   publish-fixture:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/v')
     needs: [fixture, verify-test-summary]
     permissions:
       contents: write
@@ -128,7 +132,7 @@ jobs:
 
   publish-tool-release:
     if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v')
-    needs: [fixture, verify-test-summary]
+    needs: [fixture, verify-test-summary, publish-fixture]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
