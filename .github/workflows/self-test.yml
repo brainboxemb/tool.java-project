@@ -118,7 +118,7 @@ jobs:
           grep -F '[Readable Surefire summary](evidence/tests/README.md)' publication/README.md
 
   publish-fixture:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     needs: [fixture, verify-test-summary]
     permissions:
       contents: write
