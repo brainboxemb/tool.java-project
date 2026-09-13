@@ -28,8 +28,10 @@ jobs:
     with:
       version: ${{ inputs.version || '' }}
       release_sha: ${{ inputs.release_sha || '' }}
+      # The full self-test executes the canonical Java action as part of the real
+      # Linux/Windows fixture. The direct local-action test stays path-scoped PR
+      # evidence and is intentionally not required as an exact-main push run.
       required_main_workflows: |
         self-test.yml
-        local-action-test.yml
       tagged_verification_workflow: self-test.yml
       wait_for_tagged_verification: true
