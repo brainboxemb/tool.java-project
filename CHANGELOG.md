@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.1.2 — 2026-09-13
+
+- Delegate generated branch materialization to the released `tool.git-project v0.1.1` generic publisher instead of duplicating Git branch-selection/push logic in Java tooling.
+- Use one released generic Git lifecycle baseline for bootstrap, PR-preview cleanup, and generated-output publication.
+- Extend the Java generated-output lifecycle to release tags: `vX.Y.Z` publishes the prepared canonical build tree to `rel/vX.Y.Z/bld`.
+- Require successful persistent release-build publication before creating the Java GitHub Release.
+- Retain Java ownership of canonical Maven execution, the prepared `bld` tree, and Java-specific artifact/evidence/provenance semantics.
+- Backfill `rel/v0.1.1/bld` from the already verified `prod/bld` output for the same source commit without retagging or rebuilding v0.1.1.
+
 ## 0.1.1 — 2026-09-13
 
 - Add stable local `java-project.sh canonical` action for the existing canonical Maven lifecycle.
