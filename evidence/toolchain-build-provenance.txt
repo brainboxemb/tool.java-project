@@ -1,0 +1,16 @@
+toolchain_contract=2
+repository=brainboxemb/tool.java-project
+source_revision=0901ab2d1ec2b2854a552ed52c2acc1a968acd8a
+checked_out_sha=0901ab2d1ec2b2854a552ed52c2acc1a968acd8a
+tool_java_project_version=0.1.2
+tool_java_project_revision=0901ab2d1ec2b2854a552ed52c2acc1a968acd8a
+java_baseline=8.0.504+1
+maven_baseline=3.9.16
+maven_wrapper_baseline=3.3.4
+java_runtime=openjdk version "1.8.0_504"
+maven_runtime=Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+event_name=workflow_dispatch
+source_ref=refs/tags/v0.1.2
+workflow_ref=brainboxemb/tool.java-project/.github/workflows/self-test.yml@refs/tags/v0.1.2
+runner_os=Linux
+runner_arch=X64
