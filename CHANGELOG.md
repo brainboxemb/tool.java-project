@@ -5,9 +5,10 @@
 ## 0.1.2 — 2026-09-13
 
 - Delegate generated branch materialization to the released `tool.git-project` generic publisher instead of duplicating Git branch-selection/push logic in Java tooling.
-- Use one released generic Git lifecycle baseline, `tool.git-project v0.1.2`, for bootstrap, PR-preview cleanup, generated-output publication, and release-request/tag orchestration.
-- Replace the long Java-owned release-request/tag implementation with a thin caller to the generic `tool.git-project v0.1.2` release workflow.
+- Use one released generic Git lifecycle baseline, `tool.git-project v0.1.3`, for bootstrap, PR-preview cleanup, generated-output publication, and release-request/tag orchestration.
+- Replace the long Java-owned release-request/tag implementation with a thin caller to the generic `tool.git-project v0.1.3` release workflow.
 - Keep Java-specific tagged verification, `rel/vX.Y.Z/bld` publication, Java/JDK/Maven/Maven-Wrapper provenance, and the Java GitHub Release asset in `tool.java-project`.
+- Use the stale-safe generic publisher from `tool.git-project v0.1.3`, preventing older successful workflow runs from overwriting newer `dev/pr-N/bld` or `prod/bld` output.
 - Extend the Java generated-output lifecycle to release tags: `vX.Y.Z` publishes the prepared canonical build tree to `rel/vX.Y.Z/bld`.
 - Require successful persistent release-build publication before creating the Java GitHub Release.
 - Retain Java ownership of canonical Maven execution, the prepared `bld` tree, and Java-specific artifact/evidence/provenance semantics.
