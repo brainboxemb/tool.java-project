@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.3 — 2026-09-13
+
+- Expose the existing native-Windows compatibility build and exact Linux-canonical-artifact smoke as a separately consumable reusable workflow.
+- Keep Maven Wrapper validation, Windows `mvn verify`, test evidence, and canonical-artifact smoke owned by `tool.java-project` instead of copying Java build semantics into repository templates.
+- Refactor the existing all-in-one Java verify workflow to call the new Windows capability after its Linux canonical build, preserving current behaviour while proving the new interface in owner CI.
+- Enable Moon-orchestrated consumers to execute the Linux canonical Maven lifecycle once, then retain the established independent Windows evidence without triggering a second Linux build.
+
 ## 0.1.2 — 2026-09-13
 
 - Delegate generated branch materialization to the released `tool.git-project` generic publisher instead of duplicating Git branch-selection/push logic in Java tooling.
