@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  GIT_TOOL_RELEASE_SHA: 2a3dc34a792061856071096cea7da2b87fc61f12
+
 jobs:
   release-metadata:
     runs-on: ubuntu-24.04
@@ -41,6 +44,12 @@ jobs:
           fi
 
           echo "tool.java-project version=${TOOL_VERSION} ref=${GITHUB_REF}"
+      - name: Validate generic cleanup release pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.0' .github/workflows/pr-cleanup.yml
+          test "$(git ls-tree HEAD tools/tool.git-project | awk '{print $3}')" = "${GIT_TOOL_RELEASE_SHA}"
 
   bootstrap-linux:
     runs-on: ubuntu-24.04
@@ -53,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           ./bootstrap.sh
-          test "$(git -C tools/tool.git-project rev-parse HEAD)" = "5db2b23b95ad0a230ab5d5d2bed725927328fcfe"
+          test "$(git -C tools/tool.git-project rev-parse HEAD)" = "${GIT_TOOL_RELEASE_SHA}"
           tools/tool.git-project/git-project.sh validate --repo .
           ./update-repo.sh
 
@@ -68,7 +77,7 @@ jobs:
         run: |
           .\bootstrap.ps1
           $actual = (git -C tools/tool.git-project rev-parse HEAD).Trim()
-          if ($actual -ne "5db2b23b95ad0a230ab5d5d2bed725927328fcfe") { throw "Unexpected tool.git-project SHA: $actual" }
+          if ($actual -ne $env:GIT_TOOL_RELEASE_SHA) { throw "Unexpected tool.git-project SHA: $actual" }
           .\tools\tool.git-project\git-project.ps1 validate -RepoRoot .
           .\update-repo.ps1
 
