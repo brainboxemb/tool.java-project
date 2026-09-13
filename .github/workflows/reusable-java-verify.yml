@@ -141,90 +141,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  windows-compatibility:
-    name: Windows compatibility build
-    runs-on: windows-2025
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout consumer
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up exact Java 8 baseline
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
-        with:
-          distribution: temurin
-          java-version: ${{ inputs.java-version }}
-          check-latest: false
-          verify-signature: true
-          cache: maven
-          cache-dependency-path: ${{ inputs.working-directory }}/pom.xml
-
-      - name: Validate Maven Wrapper baseline
-        working-directory: ${{ inputs.working-directory }}
-        shell: pwsh
-        run: |
-          if (-not (Test-Path .\mvnw.cmd)) { throw 'mvnw.cmd is missing' }
-          if (-not (Test-Path .\.mvn\wrapper\maven-wrapper.properties)) { throw 'maven-wrapper.properties is missing' }
-          $wrapper = Get-Content -Raw .\.mvn\wrapper\maven-wrapper.properties | ConvertFrom-StringData
-          if ($wrapper.wrapperVersion -ne '${{ inputs.maven-wrapper-version }}') {
-            throw "Unexpected Maven Wrapper version: $($wrapper.wrapperVersion)"
-          }
-          $version = (& .\mvnw.cmd --version | Out-String)
-          Write-Host $version
-          if ($version -notmatch 'Apache Maven ${{ inputs.maven-version }}') {
-            throw 'Unexpected Maven version'
-          }
-
-      - name: Verify
-        working-directory: ${{ inputs.working-directory }}
-        shell: pwsh
-        run: .\mvnw.cmd --batch-mode --no-transfer-progress verify
-
-      - name: Upload Windows test evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: ${{ inputs.artifact-name }}-windows-evidence
-          path: ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
-          if-no-files-found: warn
-          retention-days: 14
-
-  windows-canonical-artifact-smoke:
-    name: Windows canonical-artifact smoke
-    if: ${{ inputs.runnable-jar-name != '' }}
+  windows:
     needs: linux-canonical
-    runs-on: windows-2025
-    timeout-minutes: 5
-
-    steps:
-      - name: Set up exact Java 8 baseline
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
-        with:
-          distribution: temurin
-          java-version: ${{ inputs.java-version }}
-          check-latest: false
-          verify-signature: true
-
-      - name: Download canonical Linux artifact
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: canonical-artifact
-
-      - name: Run canonical artifact on Windows
-        shell: pwsh
-        env:
-          SMOKE_EXPECTED_OUTPUT: ${{ inputs.smoke-expected-output }}
-        run: |
-          $jar = Join-Path 'canonical-artifact' '${{ inputs.runnable-jar-name }}'
-          if (-not (Test-Path $jar)) {
-            Write-Host 'Downloaded artifact contents:'
-            Get-ChildItem -Recurse canonical-artifact
-            throw "Runnable JAR not found: $jar"
-          }
-          $output = (& java -jar $jar | Out-String).Trim()
-          Write-Host $output
-          if ($env:SMOKE_EXPECTED_OUTPUT -and $output -ne $env:SMOKE_EXPECTED_OUTPUT) {
-            throw "Unexpected smoke output: $output"
-          }
+    uses: ./.github/workflows/reusable-java-windows-compatibility.yml
+    with:
+      working-directory: ${{ inputs.working-directory }}
+      java-version: ${{ inputs.java-version }}
+      maven-version: ${{ inputs.maven-version }}
+      maven-wrapper-version: ${{ inputs.maven-wrapper-version }}
+      artifact-name: ${{ inputs.artifact-name }}
+      runnable-jar-name: ${{ inputs.runnable-jar-name }}
+      smoke-expected-output: ${{ inputs.smoke-expected-output }}
+      test-report-path: ${{ inputs.test-report-path }}
