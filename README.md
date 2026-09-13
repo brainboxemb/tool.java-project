@@ -20,7 +20,9 @@ consumer repository
         ↓
   project.java.yml         Java-specific configuration
         ↓
-  Maven Wrapper / Java verification / reusable CI
+  tool.java-project local action / reusable CI
+        ↓
+  Maven Wrapper / Java verification
 ```
 
 The Java baseline proves:
@@ -36,7 +38,7 @@ verify + tests
     ↓
 canonical Linux artifact
     ↓
-provenance
+provenance + retained execution log
     ↓
 Windows compatibility execution of that exact artifact
 ```
@@ -44,15 +46,36 @@ Windows compatibility execution of that exact artifact
 Consumers may additionally opt in to generated build publication:
 
 ```text
-canonical Linux build
+canonical Linux action
     ↓
-prepared publication bundle
+prepared publication/output tree
     ↓
 PR     → dev/pr-N/bld
 main   → prod/bld
 ```
 
 The publication step reuses the canonical build; it does not run a second Maven build merely to populate the generated branch.
+
+## Stable local canonical action
+
+The canonical Java lifecycle is available as a local domain action:
+
+```bash
+bash tools/tool.java-project/java-project.sh canonical \
+  --working-directory . \
+  --java-version '8.0.504+1' \
+  --maven-version '3.9.16' \
+  --maven-wrapper-version '3.3.4' \
+  --test-report-path 'target/surefire-reports/**' \
+  --source-revision "$(git rev-parse HEAD)" \
+  --repository 'owner/repository' \
+  --publication-root bld/java \
+  --publication-artifact target/my-app.jar
+```
+
+The reusable Linux canonical workflow calls this same action. Local development, CI and repository-level orchestration therefore share one implementation of the canonical Maven lifecycle rather than carrying separate Maven/provenance/publication-preparation scripts.
+
+See [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the action contract and prepared-output model.
 
 ## Tool release baseline
 
@@ -126,18 +149,24 @@ For this repository `project.yml` currently has no additional managed externals;
 .github/workflows/
   reusable-java-verify.yml    reusable canonical build/test workflow
   reusable-java-publish.yml   optional generated build-output publisher
+  local-action-test.yml       direct stable-action fixture proof
   self-test.yml               local-bootstrap + Java fixture proof
   release.yml                 exact-commit tool release/tag dispatcher
 
 docs/
   consumer-usage.md           workflow contract, pinning and evidence model
+  local-canonical-action.md   stable local domain-action contract
 
 fixture/
   minimal-java-app/           generic runnable Java 8 test fixture
 
+support/
+  SurefireSummary.java        JDK-only readable Surefire report generator
+
 tools/
   tool.git-project/           pinned bootstrap submodule
 
+java-project.sh               stable local Java domain action
 VERSION                       tool.java-project release version
 project.yml                   generic repository/profile declaration
 project.java.yml              Java-specific baseline
@@ -150,17 +179,18 @@ README.md
 
 ## Consumer direction
 
-A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper. It can use the same generic Git bootstrap pattern locally and call the reusable workflows from this repository using a deliberate pinned reference.
+A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper. It can use the same generic Git bootstrap pattern locally, call the stable local Java action, and/or call the reusable workflows from this repository using a deliberate pinned reference.
 
-See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete CI contract and example caller workflow.
+See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete CI contract and example caller workflow, and [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the local/orchestration-facing action.
 
 The reusable verification workflow provides generic Java behaviour such as:
 
 - explicit Java provisioning;
+- invocation of the stable canonical local action on Linux;
 - Maven Wrapper version/use validation;
 - Linux canonical verification and artifact production;
 - test-report/artifact collection;
-- build provenance;
+- retained canonical execution logging and build provenance;
 - Windows compatibility verification;
 - canonical-artifact execution smoke tests when configured;
 - optional staging of selected canonical build files for generated publication.
@@ -183,14 +213,19 @@ artifacts/
   <selected canonical build files>
 
 evidence/
+  execution.log
   toolchain-build-provenance.txt
-  tests/...
+  tests/
+    README.md
+    ... raw Surefire reports ...
 
 README.md
 source-sha.txt
 ```
 
 It must not contain a source checkout or managed tooling repositories. Temporary Actions artifacts continue to exist for job-to-job transfer and short-lived downloads; the generated branch is the convenient browsable view.
+
+The build/preparation action remains separate from publication. This is important for repository-level output caching: a prepared canonical output tree may be built or hydrated, while pushing `prod/bld` / `dev/pr-N/bld` is still an explicit external side effect.
 
 ## Release workflow
 
@@ -217,6 +252,8 @@ Do not add product-specific assumptions here, including:
 - one product's Raspberry Pi image content;
 - Docker services merely because a Java build exists.
 
+Repository-level orchestration also remains outside this repository: Moon task selection/cache policy is not part of `tool.java-project`. This repository exposes stable Java domain actions that such an orchestrator may call.
+
 Docker/Compose may be introduced by consumers for real external-service integration tests such as RabbitMQ, but it is not part of the fast Java build baseline.
 
 ## Evidence
@@ -224,15 +261,16 @@ Docker/Compose may be introduced by consumers for real external-service integrat
 The repository self-test proves independent layers:
 
 1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project` gitlink;
-2. Java fixture verification:
-   - Linux canonical `verify` and artifact production;
+2. the stable local canonical action against the internal fixture;
+3. Java fixture verification through the reusable workflow:
+   - Linux canonical action and artifact production;
    - independent Windows `verify`;
    - execution on Windows of the exact JAR uploaded by the Linux canonical job;
-3. readable Surefire summary generated from the canonical test XML without rerunning tests;
-4. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld`;
-5. on a release tag, repetition of the self-test before the GitHub Release is published.
+4. readable Surefire summary generated from the canonical test XML without rerunning tests;
+5. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld`;
+6. on a release tag, repetition of the self-test before the GitHub Release is published.
 
-Linux Java evidence also includes test reports and `toolchain-build-provenance.txt`.
+Linux Java evidence also includes test reports, `toolchain-build-provenance.txt` and `java-canonical-execution.log`. The prepared publication tree carries the execution log as `evidence/execution.log`.
 
 ## Development workflow
 

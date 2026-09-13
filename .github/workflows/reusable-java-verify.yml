@@ -76,289 +76,41 @@ jobs:
           cache: maven
           cache-dependency-path: ${{ inputs.working-directory }}/pom.xml
 
-      - name: Validate Maven Wrapper baseline
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f ./mvnw
-          test -x ./mvnw
-          test -f .mvn/wrapper/maven-wrapper.properties
-          grep -F "wrapperVersion=${{ inputs.maven-wrapper-version }}" .mvn/wrapper/maven-wrapper.properties
-          ./mvnw --version | tee /tmp/maven-version.txt
-          grep -F "Apache Maven ${{ inputs.maven-version }}" /tmp/maven-version.txt
+      - name: Checkout exact tool.java-project implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.java-project
+          ref: ${{ github.workflow_sha }}
+          path: .tooling/tool.java-project
 
-      - name: Verify
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        run: ./mvnw --batch-mode --no-transfer-progress verify
-
-      - name: Record canonical build provenance
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        env:
-          TOOLCHAIN_JAVA_VERSION: ${{ inputs.java-version }}
-          TOOLCHAIN_MAVEN_VERSION: ${{ inputs.maven-version }}
-          TOOLCHAIN_WRAPPER_VERSION: ${{ inputs.maven-wrapper-version }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-        run: |
-          set -euo pipefail
-          mkdir -p target
-          {
-            echo "toolchain_contract=1"
-            echo "repository=${GITHUB_REPOSITORY}"
-            echo "event_name=${GITHUB_EVENT_NAME}"
-            echo "checked_out_sha=${GITHUB_SHA}"
-            echo "source_ref=${GITHUB_REF}"
-            if [ -n "${PR_HEAD_SHA}" ]; then echo "pull_request_head_sha=${PR_HEAD_SHA}"; fi
-            if [ -n "${PR_BASE_SHA}" ]; then echo "pull_request_base_sha=${PR_BASE_SHA}"; fi
-            echo "workflow_ref=${GITHUB_WORKFLOW_REF}"
-            echo "runner_os=${RUNNER_OS}"
-            echo "runner_arch=${RUNNER_ARCH}"
-            echo "java_baseline=${TOOLCHAIN_JAVA_VERSION}"
-            echo "maven_baseline=${TOOLCHAIN_MAVEN_VERSION}"
-            echo "maven_wrapper_baseline=${TOOLCHAIN_WRAPPER_VERSION}"
-            printf 'java_runtime='; java -version 2>&1 | head -n 1
-            printf 'maven_runtime='; ./mvnw --version | head -n 1
-          } > target/toolchain-build-provenance.txt
-          cat target/toolchain-build-provenance.txt
-
-      - name: Prepare generated build publication
-        if: ${{ inputs.publication-artifact-paths != '' }}
-        working-directory: ${{ inputs.working-directory }}
+      - name: Run canonical Java action
         shell: bash
         env:
           PUBLICATION_ARTIFACT_PATHS: ${{ inputs.publication-artifact-paths }}
-          TEST_REPORT_PATH: ${{ inputs.test-report-path }}
-          PUBLICATION_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          TOOLCHAIN_JAVA_VERSION: ${{ inputs.java-version }}
-          TOOLCHAIN_MAVEN_VERSION: ${{ inputs.maven-version }}
-          TOOLCHAIN_WRAPPER_VERSION: ${{ inputs.maven-wrapper-version }}
+          SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          publication_root="target/java-build-publication"
-          rm -rf "${publication_root}"
-          mkdir -p "${publication_root}/artifacts" "${publication_root}/evidence/tests"
+          args=(
+            canonical
+            --working-directory '${{ inputs.working-directory }}'
+            --java-version '${{ inputs.java-version }}'
+            --maven-version '${{ inputs.maven-version }}'
+            --maven-wrapper-version '${{ inputs.maven-wrapper-version }}'
+            --test-report-path '${{ inputs.test-report-path }}'
+            --source-revision "$SOURCE_REVISION"
+            --repository "$GITHUB_REPOSITORY"
+          )
 
-          copied=0
-          while IFS= read -r configured_path || [ -n "${configured_path}" ]; do
-            configured_path="$(printf '%s' "${configured_path}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-            [ -n "${configured_path}" ] || continue
-            if [ ! -f "${configured_path}" ]; then
-              echo "ERROR: publication artifact does not exist: ${configured_path}" >&2
-              exit 1
-            fi
-            target_name="$(basename "${configured_path}")"
-            if [ -e "${publication_root}/artifacts/${target_name}" ]; then
-              echo "ERROR: duplicate publication artifact basename: ${target_name}" >&2
-              exit 1
-            fi
-            cp "${configured_path}" "${publication_root}/artifacts/${target_name}"
-            copied=$((copied + 1))
-          done <<< "${PUBLICATION_ARTIFACT_PATHS}"
-
-          if [ "${copied}" -lt 1 ]; then
-            echo "ERROR: publication-artifact-paths did not select any files" >&2
-            exit 1
+          if [[ -n "$PUBLICATION_ARTIFACT_PATHS" ]]; then
+            args+=(--publication-root target/java-build-publication)
+            while IFS= read -r configured_path || [[ -n "$configured_path" ]]; do
+              configured_path="$(printf '%s' "$configured_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+              [[ -n "$configured_path" ]] || continue
+              args+=(--publication-artifact "$configured_path")
+            done <<< "$PUBLICATION_ARTIFACT_PATHS"
           fi
 
-          cp target/toolchain-build-provenance.txt "${publication_root}/evidence/toolchain-build-provenance.txt"
-
-          shopt -s globstar nullglob
-          while IFS= read -r report; do
-            [ -f "${report}" ] || continue
-            relative="${report#./}"
-            destination="${publication_root}/evidence/tests/${relative}"
-            mkdir -p "$(dirname "${destination}")"
-            cp "${report}" "${destination}"
-          done < <(compgen -G "${TEST_REPORT_PATH}" || true)
-
-          printf '%s\n' "${PUBLICATION_SOURCE_SHA}" > "${publication_root}/source-sha.txt"
-          {
-            echo "# Java build output"
-            echo
-            echo "Generated by \`tool.java-project\` from the canonical Linux build."
-            echo
-            echo "- Repository: \`${GITHUB_REPOSITORY}\`"
-            echo "- Source SHA: \`${PUBLICATION_SOURCE_SHA}\`"
-            echo "- Canonical checked-out SHA: \`${GITHUB_SHA}\`"
-            echo "- Java baseline: \`${TOOLCHAIN_JAVA_VERSION}\`"
-            echo "- Maven baseline: \`${TOOLCHAIN_MAVEN_VERSION}\`"
-            echo "- Maven Wrapper baseline: \`${TOOLCHAIN_WRAPPER_VERSION}\`"
-            echo
-            echo "## Artifacts"
-            echo
-            for artifact in "${publication_root}"/artifacts/*; do
-              echo "- \`artifacts/$(basename "${artifact}")\`"
-            done
-            echo
-            echo "## Evidence"
-            echo
-            echo "- \`evidence/toolchain-build-provenance.txt\`"
-            if find "${publication_root}/evidence/tests" -type f -print -quit | grep -q .; then
-              echo "- \`evidence/tests/\` — Maven test reports"
-            fi
-            echo
-            echo "This branch is generated build output. Do not edit it manually."
-          } > "${publication_root}/README.md"
-
-          find "${publication_root}" -type f -print | sort
-
-      - name: Generate readable Surefire test summary
-        if: ${{ inputs.publication-artifact-paths != '' }}
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from collections import defaultdict
-          from decimal import Decimal, InvalidOperation
-          from pathlib import Path
-          import xml.etree.ElementTree as ET
-
-          report_root = Path("target/java-build-publication/evidence/tests")
-          output = report_root / "README.md"
-          xml_files = sorted(report_root.rglob("TEST-*.xml"))
-
-          def local_name(tag):
-              return tag.rsplit("}", 1)[-1]
-
-          def number(value):
-              try:
-                  return int(value or 0)
-              except ValueError:
-                  return 0
-
-          def elapsed(value):
-              try:
-                  return Decimal(value or "0")
-              except InvalidOperation:
-                  return Decimal("0")
-
-          def md(value):
-              return " ".join((value or "").split()).replace("|", "\\|")
-
-          def module_name(path):
-              parts = path.relative_to(report_root).parts
-              try:
-                  target_index = parts.index("target")
-              except ValueError:
-                  return "(root)"
-              return "/".join(parts[:target_index]) or "(root)"
-
-          suites = []
-          problems = []
-          for path in xml_files:
-              root = ET.parse(str(path)).getroot()
-              suite_nodes = [root] if local_name(root.tag) == "testsuite" else [
-                  node for node in root.iter() if local_name(node.tag) == "testsuite"
-              ]
-              for suite in suite_nodes:
-                  row = {
-                      "module": module_name(path),
-                      "suite": suite.attrib.get("name", path.stem),
-                      "tests": number(suite.attrib.get("tests")),
-                      "failures": number(suite.attrib.get("failures")),
-                      "errors": number(suite.attrib.get("errors")),
-                      "skipped": number(suite.attrib.get("skipped")),
-                      "time": elapsed(suite.attrib.get("time")),
-                      "raw": path.relative_to(report_root).as_posix(),
-                  }
-                  suites.append(row)
-                  for case in suite:
-                      if local_name(case.tag) != "testcase":
-                          continue
-                      for detail in case:
-                          kind = local_name(detail.tag)
-                          if kind not in ("failure", "error"):
-                              continue
-                          problems.append({
-                              "kind": kind,
-                              "module": row["module"],
-                              "suite": row["suite"],
-                              "test": case.attrib.get("name", "(unnamed)"),
-                              "message": detail.attrib.get("message") or (detail.text or ""),
-                          })
-
-          totals = {
-              key: sum((row[key] for row in suites), Decimal("0") if key == "time" else 0)
-              for key in ("tests", "failures", "errors", "skipped", "time")
-          }
-          modules = defaultdict(lambda: {"tests": 0, "failures": 0, "errors": 0, "skipped": 0, "time": Decimal("0")})
-          for row in suites:
-              for key in modules[row["module"]]:
-                  modules[row["module"]][key] += row[key]
-
-          lines = [
-              "# Unit test report",
-              "",
-              "Generated from the Maven Surefire XML produced by the canonical Linux `mvn verify` run. Tests are **not** rerun to create this report.",
-              "",
-          ]
-          if not suites:
-              lines += [
-                  "No Surefire `TEST-*.xml` files were found in the configured test-report path.",
-                  "",
-              ]
-          else:
-              status = "PASS" if totals["failures"] == 0 and totals["errors"] == 0 else "FAIL"
-              lines += [
-                  "## Summary",
-                  "",
-                  f"**Status: {status}**",
-                  "",
-                  "| Tests | Failures | Errors | Skipped | Time (s) |",
-                  "| ---: | ---: | ---: | ---: | ---: |",
-                  f"| {totals['tests']} | {totals['failures']} | {totals['errors']} | {totals['skipped']} | {totals['time']:.3f} |",
-                  "",
-                  "## Maven modules",
-                  "",
-                  "| Module | Tests | Failures | Errors | Skipped | Time (s) |",
-                  "| --- | ---: | ---: | ---: | ---: | ---: |",
-              ]
-              for module in sorted(modules):
-                  row = modules[module]
-                  lines.append(
-                      f"| `{md(module)}` | {row['tests']} | {row['failures']} | {row['errors']} | {row['skipped']} | {row['time']:.3f} |"
-                  )
-              lines += [
-                  "",
-                  "## Test suites",
-                  "",
-                  "| Module | Suite | Tests | Failures | Errors | Skipped | Time (s) | Raw XML |",
-                  "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
-              ]
-              for row in sorted(suites, key=lambda item: (item["module"], item["suite"], item["raw"])):
-                  lines.append(
-                      f"| `{md(row['module'])}` | `{md(row['suite'])}` | {row['tests']} | {row['failures']} | {row['errors']} | {row['skipped']} | {row['time']:.3f} | [XML]({row['raw']}) |"
-                  )
-              lines += ["", "## Failures and errors", ""]
-              if problems:
-                  for problem in problems:
-                      lines.append(
-                          f"- **{problem['kind'].upper()}** `{md(problem['module'])}` / `{md(problem['suite'])}` / `{md(problem['test'])}` — {md(problem['message']) or 'no message'}"
-                      )
-              else:
-                  lines.append("None.")
-              lines += [
-                  "",
-                  "## Raw evidence",
-                  "",
-                  "The original Surefire XML/TXT files are retained below this directory for detailed inspection.",
-                  "",
-              ]
-
-          output.write_text("\n".join(lines), encoding="utf-8")
-          print(output.read_text(encoding="utf-8"))
-          PY
-
-          {
-            echo
-            echo "## Unit tests"
-            echo
-            echo "- [Readable Surefire summary](evidence/tests/README.md)"
-          } >> target/java-build-publication/README.md
+          bash .tooling/tool.java-project/java-project.sh "${args[@]}"
 
       - name: Upload canonical Java artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -384,6 +136,7 @@ jobs:
           name: ${{ inputs.artifact-name }}-linux-evidence
           path: |
             ${{ inputs.working-directory }}/target/toolchain-build-provenance.txt
+            ${{ inputs.working-directory }}/target/java-canonical-execution.log
             ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
           if-no-files-found: warn
           retention-days: 14
