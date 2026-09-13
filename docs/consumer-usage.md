@@ -65,13 +65,14 @@ jobs:
 
 ## Optional generated build publication
 
-A consumer that wants browsable build output can ask the verification workflow to prepare selected canonical files and then call the separate publication workflow.
+A consumer that wants browsable build output can ask the verification workflow to prepare selected canonical files and then call the separate Java publication wrapper.
 
-The convention is:
+The lifecycle is:
 
 ```text
-pull request #N -> dev/pr-N/bld
-push to main   -> prod/bld
+pull request #N     -> dev/pr-N/bld
+push to main        -> prod/bld
+release tag vX.Y.Z  -> rel/vX.Y.Z/bld
 ```
 
 Example:
@@ -112,6 +113,7 @@ artifacts/
   <selected canonical build files>
 
 evidence/
+  execution.log
   toolchain-build-provenance.txt
   tests/...
 
@@ -119,9 +121,11 @@ README.md
 source-sha.txt
 ```
 
-The publication job does **not** run Maven again. It downloads the publication bundle prepared by the canonical Linux job and force-replaces the generated branch contents.
+The publication job does **not** run Maven again. It consumes the publication bundle prepared by the canonical Linux job.
 
-Publication is deliberately separate from verification so the normal build jobs remain read-only. A same-repository pull request can publish `dev/pr-N/bld`; a fork pull request is skipped rather than receiving repository write access. Only a `main` push publishes `prod/bld`.
+The Java wrapper does not implement Git branch selection or push mechanics. It supplies the domain-owned suffix `bld` to the released generic publisher in `tool.git-project v0.1.1`. That generic owner maps the trusted GitHub event context to `dev/pr-N/bld`, `prod/bld`, or `rel/vX.Y.Z/bld`.
+
+Publication is deliberately separate from verification so the normal build jobs remain read-only. A fork pull request is skipped rather than receiving repository write access. Release workflows should require persistent release-output publication before creating the GitHub Release.
 
 Temporary Actions artifacts remain available for CI job-to-job transfer and short-lived downloads. The generated branch is the convenient browsable representation of selected build output and evidence.
 
@@ -134,8 +138,8 @@ The Linux job:
 1. checks out the consumer commit;
 2. provisions the exact configured Temurin Java baseline;
 3. validates the Maven Wrapper and expected Maven/Wrapper versions;
-4. runs `./mvnw verify`;
-5. records build provenance;
+4. runs `./mvnw verify` through the stable local canonical action;
+5. records build provenance and the retained execution log;
 6. uploads the configured canonical artifact;
 7. uploads test/provenance evidence;
 8. when configured, prepares and uploads a generated-publication bundle from that same build.
@@ -187,11 +191,12 @@ Generated publication also contains `source-sha.txt`. For pull requests this ide
 
 Initial/pre-v1 policy:
 
-- consumers pin a full immutable commit SHA;
-- adopting a new toolchain commit is an explicit reviewed dependency/tooling update;
-- `main` is not a stable consumer contract.
+- consumers pin a full immutable Java-tool commit SHA for reusable Java workflows;
+- cross-repository lifecycle helpers are consumed from deliberate `tool.git-project` release tags;
+- adopting a new toolchain commit/release is an explicit reviewed dependency/tooling update;
+- moving `main` is not a stable consumer contract.
 
-After the workflow contract has been exercised by real consumers, the repository may publish a deliberate `v1` release/tag policy. A moving major tag should only be introduced with a documented compatibility/update policy; immutable commits remain valid for maximum reproducibility.
+A moving major tag should only be introduced with a documented compatibility/update policy; immutable commits remain valid for maximum reproducibility.
 
 ## Docker
 
