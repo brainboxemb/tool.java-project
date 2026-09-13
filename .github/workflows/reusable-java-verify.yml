@@ -205,6 +205,161 @@ jobs:
 
           find "${publication_root}" -type f -print | sort
 
+      - name: Generate readable Surefire test summary
+        if: ${{ inputs.publication-artifact-paths != '' }}
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from collections import defaultdict
+          from decimal import Decimal, InvalidOperation
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          report_root = Path("target/java-build-publication/evidence/tests")
+          output = report_root / "README.md"
+          xml_files = sorted(report_root.rglob("TEST-*.xml"))
+
+          def local_name(tag):
+              return tag.rsplit("}", 1)[-1]
+
+          def number(value):
+              try:
+                  return int(value or 0)
+              except ValueError:
+                  return 0
+
+          def elapsed(value):
+              try:
+                  return Decimal(value or "0")
+              except InvalidOperation:
+                  return Decimal("0")
+
+          def md(value):
+              return " ".join((value or "").split()).replace("|", "\\|")
+
+          def module_name(path):
+              parts = path.relative_to(report_root).parts
+              try:
+                  target_index = parts.index("target")
+              except ValueError:
+                  return "(root)"
+              return "/".join(parts[:target_index]) or "(root)"
+
+          suites = []
+          problems = []
+          for path in xml_files:
+              root = ET.parse(str(path)).getroot()
+              suite_nodes = [root] if local_name(root.tag) == "testsuite" else [
+                  node for node in root.iter() if local_name(node.tag) == "testsuite"
+              ]
+              for suite in suite_nodes:
+                  row = {
+                      "module": module_name(path),
+                      "suite": suite.attrib.get("name", path.stem),
+                      "tests": number(suite.attrib.get("tests")),
+                      "failures": number(suite.attrib.get("failures")),
+                      "errors": number(suite.attrib.get("errors")),
+                      "skipped": number(suite.attrib.get("skipped")),
+                      "time": elapsed(suite.attrib.get("time")),
+                      "raw": path.relative_to(report_root).as_posix(),
+                  }
+                  suites.append(row)
+                  for case in suite:
+                      if local_name(case.tag) != "testcase":
+                          continue
+                      for detail in case:
+                          kind = local_name(detail.tag)
+                          if kind not in ("failure", "error"):
+                              continue
+                          problems.append({
+                              "kind": kind,
+                              "module": row["module"],
+                              "suite": row["suite"],
+                              "test": case.attrib.get("name", "(unnamed)"),
+                              "message": detail.attrib.get("message") or (detail.text or ""),
+                          })
+
+          totals = {
+              key: sum((row[key] for row in suites), Decimal("0") if key == "time" else 0)
+              for key in ("tests", "failures", "errors", "skipped", "time")
+          }
+          modules = defaultdict(lambda: {"tests": 0, "failures": 0, "errors": 0, "skipped": 0, "time": Decimal("0")})
+          for row in suites:
+              for key in modules[row["module"]]:
+                  modules[row["module"]][key] += row[key]
+
+          lines = [
+              "# Unit test report",
+              "",
+              "Generated from the Maven Surefire XML produced by the canonical Linux `mvn verify` run. Tests are **not** rerun to create this report.",
+              "",
+          ]
+          if not suites:
+              lines += [
+                  "No Surefire `TEST-*.xml` files were found in the configured test-report path.",
+                  "",
+              ]
+          else:
+              status = "PASS" if totals["failures"] == 0 and totals["errors"] == 0 else "FAIL"
+              lines += [
+                  "## Summary",
+                  "",
+                  f"**Status: {status}**",
+                  "",
+                  "| Tests | Failures | Errors | Skipped | Time (s) |",
+                  "| ---: | ---: | ---: | ---: | ---: |",
+                  f"| {totals['tests']} | {totals['failures']} | {totals['errors']} | {totals['skipped']} | {totals['time']:.3f} |",
+                  "",
+                  "## Maven modules",
+                  "",
+                  "| Module | Tests | Failures | Errors | Skipped | Time (s) |",
+                  "| --- | ---: | ---: | ---: | ---: | ---: |",
+              ]
+              for module in sorted(modules):
+                  row = modules[module]
+                  lines.append(
+                      f"| `{md(module)}` | {row['tests']} | {row['failures']} | {row['errors']} | {row['skipped']} | {row['time']:.3f} |"
+                  )
+              lines += [
+                  "",
+                  "## Test suites",
+                  "",
+                  "| Module | Suite | Tests | Failures | Errors | Skipped | Time (s) | Raw XML |",
+                  "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+              ]
+              for row in sorted(suites, key=lambda item: (item["module"], item["suite"], item["raw"])):
+                  lines.append(
+                      f"| `{md(row['module'])}` | `{md(row['suite'])}` | {row['tests']} | {row['failures']} | {row['errors']} | {row['skipped']} | {row['time']:.3f} | [XML]({row['raw']}) |"
+                  )
+              lines += ["", "## Failures and errors", ""]
+              if problems:
+                  for problem in problems:
+                      lines.append(
+                          f"- **{problem['kind'].upper()}** `{md(problem['module'])}` / `{md(problem['suite'])}` / `{md(problem['test'])}` — {md(problem['message']) or 'no message'}"
+                      )
+              else:
+                  lines.append("None.")
+              lines += [
+                  "",
+                  "## Raw evidence",
+                  "",
+                  "The original Surefire XML/TXT files are retained below this directory for detailed inspection.",
+                  "",
+              ]
+
+          output.write_text("\n".join(lines), encoding="utf-8")
+          print(output.read_text(encoding="utf-8"))
+          PY
+
+          {
+            echo
+            echo "## Unit tests"
+            echo
+            echo "- [Readable Surefire summary](evidence/tests/README.md)"
+          } >> target/java-build-publication/README.md
+
       - name: Upload canonical Java artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
