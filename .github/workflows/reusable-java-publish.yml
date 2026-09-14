@@ -17,7 +17,7 @@ jobs:
       contents: write
     # Generic branch mapping/push belongs to tool.git-project; Java owns the
     # prepared build tree and the `bld` publication suffix.
-    uses: brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.3
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.2.4
     with:
       artifact_name: ${{ inputs.publication-artifact-name }}
       branch_suffix: bld
