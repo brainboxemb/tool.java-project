@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Immutable release tag, e.g. v0.1.2'
+        description: 'Immutable release tag, e.g. v0.1.4'
         required: true
         type: string
       release_sha:
@@ -24,7 +24,7 @@ jobs:
     # Generic request validation, main-run gates, tag creation and request-branch
     # cleanup belong to tool.git-project. Java-specific provenance and GitHub
     # Release assets remain in the tagged self-test below this boundary.
-    uses: brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.1.3
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.2.4
     with:
       version: ${{ inputs.version || '' }}
       release_sha: ${{ inputs.release_sha || '' }}
