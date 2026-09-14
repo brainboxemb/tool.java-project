@@ -33,7 +33,8 @@ The action:
 6. optionally copies selected canonical artifacts into a prepared output tree;
 7. copies the raw Surefire evidence from that same Maven run;
 8. generates a readable Surefire Markdown summary with a JDK-only helper;
-9. writes the logical source revision used for the prepared output.
+9. writes the logical source revision used for the prepared output;
+10. retains the common `brainboxemb.execution-evidence` v1 envelope for the `java.canonical` producer execution.
 
 The action does **not** publish Git branches, select GitHub runners, configure Moon caching or split Maven phases into new repository-level lifecycles.
 
@@ -50,14 +51,32 @@ When `--publication-root` is supplied, the generated tree is:
   evidence/
     execution.log
     toolchain-build-provenance.txt
+    executions/
+      java-canonical/
+        execution.json
+        execution.log
     tests/
       README.md
       ... raw Surefire XML/TXT ...
 ```
 
+`evidence/executions/java-canonical/execution.json` is the domain-neutral producer entry point. It records:
+
+- capability `java.canonical`;
+- owner `brainboxemb/tool.java-project`;
+- action `canonical`;
+- the logical Java consumer `source_revision`;
+- the exact `tool.java-project` Git `owner_revision` that supplied the canonical action;
+- success/exit status and the retained producer log;
+- relative links to Java-owned toolchain and Surefire evidence.
+
+The exact JDK, Maven, Maven Wrapper, checked-out SHA and other Java-specific details remain in `evidence/toolchain-build-provenance.txt`; T6 does not duplicate that domain evidence into the common envelope.
+
+For the additive v0.1.4 interface, `evidence/execution.log` remains as a compatibility path. The canonical copy for the common contract is `evidence/executions/java-canonical/execution.log`.
+
 This tree is suitable as a declared high-level task output for cache/hydration and as input to a later publication/finalization step.
 
-Publication remains a separate side effect. A cache hit may restore output produced at an earlier input-equivalent revision; later publication/materialization evidence must not rewrite the original producer evidence to pretend the Maven action ran again.
+Publication remains a separate side effect. A cache hit may restore output produced at an earlier input-equivalent revision; later publication/materialization evidence must not rewrite the original producer evidence to pretend the Maven action ran again. Repository orchestration may add current materialization evidence separately, for example under `orchestration/`; that is not produced by `java-project.sh canonical`.
 
 ## Current capability boundary
 

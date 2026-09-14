@@ -115,6 +115,10 @@ artifacts/
 evidence/
   execution.log
   toolchain-build-provenance.txt
+  executions/
+    java-canonical/
+      execution.json
+      execution.log
   tests/...
 
 README.md
@@ -123,7 +127,9 @@ source-sha.txt
 
 The publication job does **not** run Maven again. It consumes the publication bundle prepared by the canonical Linux job.
 
-The Java wrapper does not implement Git branch selection or push mechanics. It supplies the domain-owned suffix `bld` to the released generic publisher in `tool.git-project v0.1.1`. That generic owner maps the trusted GitHub event context to `dev/pr-N/bld`, `prod/bld`, or `rel/vX.Y.Z/bld`.
+The common `evidence/executions/java-canonical/execution.json` envelope identifies the actual Java producer execution using the released `brainboxemb.execution-evidence` v1 contract. Java-specific toolchain/Surefire evidence remains in its existing domain-owned files. The top-level `evidence/execution.log` is retained as a compatibility path in the v0.1.4 line.
+
+The Java wrapper does not implement Git branch selection or push mechanics. It supplies the domain-owned suffix `bld` to the released generic publisher in `tool.git-project v0.2.4`. That generic owner maps the trusted GitHub event context to `dev/pr-N/bld`, `prod/bld`, or `rel/vX.Y.Z/bld` and owns the normative execution-evidence schema used by producer owners.
 
 Publication is deliberately separate from verification so the normal build jobs remain read-only. A fork pull request is skipped rather than receiving repository write access. Release workflows should require persistent release-output publication before creating the GitHub Release.
 
@@ -139,7 +145,7 @@ The Linux job:
 2. provisions the exact configured Temurin Java baseline;
 3. validates the Maven Wrapper and expected Maven/Wrapper versions;
 4. runs `./mvnw verify` through the stable local canonical action;
-5. records build provenance and the retained execution log;
+5. records build provenance, the common execution envelope and retained execution log;
 6. uploads the configured canonical artifact;
 7. uploads test/provenance evidence;
 8. when configured, prepares and uploads a generated-publication bundle from that same build.
@@ -186,6 +192,13 @@ The Linux evidence contains `target/toolchain-build-provenance.txt`, including:
 For pull-request workflows GitHub may build a synthetic PR merge commit. The provenance therefore records the actually built SHA separately from the pull-request head/base SHA.
 
 Generated publication also contains `source-sha.txt`. For pull requests this identifies the pull-request head SHA; the provenance file still records the exact merge/check-out SHA that produced the canonical build.
+
+The common execution envelope deliberately distinguishes these identities:
+
+- `source_revision` is the logical consumer source revision supplied to the canonical action;
+- `owner_revision` is the exact `tool.java-project` revision that supplied the canonical action semantics.
+
+When a Moon-enabled consumer hydrates an input-equivalent prepared tree, these retained producer revisions must remain unchanged. Current orchestration/materialization evidence belongs beside the producer tree (for example under `orchestration/`) and may refer to the newer current revision without rewriting producer provenance.
 
 ## Versioning and pinning policy
 

@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  GIT_TOOL_RELEASE_SHA: 8c83215b8e81e7504a659e603bfbab79871ab0ae
+  GIT_TOOL_RELEASE_SHA: 6806a2c8b15df2122c4cc3355d2df9bd11ba2fc8
 
 jobs:
   release-metadata:
@@ -48,9 +48,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.1.3' .github/workflows/release.yml
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.1.3' .github/workflows/pr-cleanup.yml
-          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.1.3' .github/workflows/reusable-java-publish.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.2.4' .github/workflows/release.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-pr-preview-cleanup.yml@v0.2.4' .github/workflows/pr-cleanup.yml
+          grep -F 'brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.2.4' .github/workflows/reusable-java-publish.yml
           test "$(git ls-tree HEAD tools/tool.git-project | awk '{print $3}')" = "${GIT_TOOL_RELEASE_SHA}"
 
   bootstrap-linux:
@@ -103,12 +103,24 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - name: Checkout source and released generic schema owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Bootstrap pinned Git tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./bootstrap.sh
+          test "$(git -C tools/tool.git-project rev-parse HEAD)" = "${GIT_TOOL_RELEASE_SHA}"
+          test -f tools/tool.git-project/schemas/execution-evidence.schema.json
+      - name: Install schema-validation test dependency
+        shell: bash
+        run: python3 -m pip install --disable-pip-version-check 'jsonschema==4.23.0'
       - name: Download prepared publication
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           name: minimal-java-app-canonical-publication
           path: publication
-      - name: Verify readable Surefire summary
+      - name: Verify readable Surefire summary and common execution evidence
         shell: bash
         run: |
           set -euo pipefail
@@ -118,6 +130,55 @@ jobs:
           grep -F '| 1 | 0 | 0 | 0 |' publication/evidence/tests/README.md
           grep -F 'com.brainboxemb.tool.fixture.AppTest' publication/evidence/tests/README.md
           grep -F '[Readable Surefire summary](evidence/tests/README.md)' publication/README.md
+          test -s publication/evidence/execution.log
+          test -s publication/evidence/executions/java-canonical/execution.log
+          test -s publication/evidence/executions/java-canonical/execution.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          root = Path.cwd()
+          schema = json.loads(
+              (root / 'tools/tool.git-project/schemas/execution-evidence.schema.json').read_text(encoding='utf-8')
+          )
+          Draft202012Validator.check_schema(schema)
+          execution_path = root / 'publication/evidence/executions/java-canonical/execution.json'
+          execution = json.loads(execution_path.read_text(encoding='utf-8'))
+          Draft202012Validator(schema).validate(execution)
+
+          expected = {
+              'capability': 'java.canonical',
+              'owner': 'brainboxemb/tool.java-project',
+              'action': 'canonical',
+              'status': 'success',
+              'exit_code': 0,
+              'log': 'execution.log',
+          }
+          for key, value in expected.items():
+              if execution.get(key) != value:
+                  raise SystemExit(f'{key} mismatch: {execution.get(key)!r}')
+
+          source_sha = (root / 'publication/source-sha.txt').read_text(encoding='utf-8').strip()
+          if execution['source_revision'] != source_sha:
+              raise SystemExit('execution source_revision does not match source-sha.txt')
+
+          provenance = {}
+          for line in (root / 'publication/evidence/toolchain-build-provenance.txt').read_text(encoding='utf-8').splitlines():
+              if '=' in line:
+                  key, value = line.split('=', 1)
+                  provenance[key] = value
+          if execution['owner_revision'] != provenance.get('tool_java_project_revision'):
+              raise SystemExit('execution owner_revision does not match Java owner provenance')
+          if execution.get('tool_java_project_version') != provenance.get('tool_java_project_version'):
+              raise SystemExit('execution tool version does not match Java owner provenance')
+
+          for relative in execution['domain_evidence']:
+              target = (execution_path.parent / relative).resolve()
+              if not target.is_file():
+                  raise SystemExit(f'domain evidence target missing: {relative}')
+          PY
 
   publish-fixture:
     if: >-
