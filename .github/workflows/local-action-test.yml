@@ -53,6 +53,8 @@ jobs:
           root='fixture/minimal-java-app/target/java-build-publication'
           test -s "$root/artifacts/minimal-java-app-0.1.0-SNAPSHOT.jar"
           test -s "$root/evidence/execution.log"
+          test -s "$root/evidence/executions/java-canonical/execution.log"
+          test -s "$root/evidence/executions/java-canonical/execution.json"
           test -s "$root/evidence/toolchain-build-provenance.txt"
           test -s "$root/evidence/tests/README.md"
           test -f "$root/evidence/tests/target/surefire-reports/TEST-com.brainboxemb.tool.fixture.AppTest.xml"
@@ -62,7 +64,12 @@ jobs:
           grep -Fq '| 1 | 0 | 0 | 0 |' "$root/evidence/tests/README.md"
           grep -Fq 'toolchain_contract=2' "$root/evidence/toolchain-build-provenance.txt"
           grep -Fq 'tool_java_project_revision=' "$root/evidence/toolchain-build-provenance.txt"
+          grep -Fq '"schema": "brainboxemb.execution-evidence"' "$root/evidence/executions/java-canonical/execution.json"
+          grep -Fq '"capability": "java.canonical"' "$root/evidence/executions/java-canonical/execution.json"
+          grep -Fq '"owner": "brainboxemb/tool.java-project"' "$root/evidence/executions/java-canonical/execution.json"
+          grep -Fq '"status": "success"' "$root/evidence/executions/java-canonical/execution.json"
           grep -Fq '[Canonical execution log](evidence/execution.log)' "$root/README.md"
+          grep -Fq '[Common canonical execution evidence](evidence/executions/java-canonical/execution.json)' "$root/README.md"
 
       - name: Upload local-action evidence
         if: always()
