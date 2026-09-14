@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-09-14
+
+- Make `evidence/executions/java-canonical/execution.log` the single canonical retained Java producer log and remove the byte-identical legacy `evidence/execution.log` compatibility path.
+- Keep the released `brainboxemb.execution-evidence` schema at version 1; the cleanup changes retained layout/navigation, not the producer-envelope fields or semantics.
+- Turn the generated build-output `README.md` into an evidence map that distinguishes artifacts, producer execution evidence, richer Java/domain evidence, current orchestration/materialization evidence, and publication context.
+- Explain in generated output that cache hydration may intentionally retain an older producer `source_revision` while current `orchestration/materialization.json` names the newer input-equivalent revision.
+- Preserve the canonical Maven lifecycle, Surefire evidence, toolchain provenance, Java 8 Linux/Windows verification, exact Linux-produced artifact smoke, and generic publication behaviour.
+
 ## 0.1.4 — 2026-09-14
 
 - Add the released `brainboxemb.execution-evidence` v1 envelope beside the retained canonical Java execution log without changing the Maven lifecycle.
@@ -25,7 +33,7 @@
 - Keep Java-specific tagged verification, `rel/vX.Y.Z/bld` publication, Java/JDK/Maven/Maven-Wrapper provenance, and the Java GitHub Release asset in `tool.java-project`.
 - Use the stale-safe generic publisher from `tool.git-project v0.1.3`, preventing older successful workflow runs from overwriting newer `dev/pr-N/bld` or `prod/bld` output.
 - Extend the Java generated-output lifecycle to release tags: `vX.Y.Z` publishes the prepared canonical build tree to `rel/vX.Y.Z/bld`.
-- Require successful persistent release-build publication before creating the Java GitHub Release.
+- Require successful persistent release-build publication before creating the GitHub Release.
 - Retain Java ownership of canonical Maven execution, the prepared `bld` tree, and Java-specific artifact/evidence/provenance semantics.
 - Backfill `rel/v0.1.1/bld` from the already verified `prod/bld` output for the same source commit without retagging or rebuilding v0.1.1.
 
