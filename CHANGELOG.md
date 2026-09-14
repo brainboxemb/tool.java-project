@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.1.4 — 2026-09-14
+
+- Add the released `brainboxemb.execution-evidence` v1 envelope beside the retained canonical Java execution log without changing the Maven lifecycle.
+- Record the logical Java consumer source revision separately from the exact `tool.java-project` owner revision that supplied the canonical action semantics.
+- Preserve existing Java-specific toolchain provenance, Surefire reports/summary, and the legacy `evidence/execution.log` compatibility path while exposing `evidence/executions/java-canonical/{execution.json,execution.log}` as the common producer entry point.
+- Validate the Java execution envelope against the normative schema published by `tool.git-project v0.2.4` in owner CI without adding Python or JSON-schema dependencies to the canonical Java runtime action.
+- Advance bootstrap, generated-output publication, PR-preview cleanup, and release-request/tag orchestration to the released `tool.git-project v0.2.4` baseline.
+
 ## 0.1.3 — 2026-09-13
 
 - Expose the existing native-Windows compatibility build and exact Linux-canonical-artifact smoke as a separately consumable reusable workflow.
