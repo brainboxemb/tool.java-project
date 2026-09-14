@@ -82,17 +82,17 @@ See [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the a
 
 `VERSION` is the source-controlled release version of `tool.java-project`; it is independent of the Maven version used by any product or fixture. A release tag is `v<VERSION>`.
 
-The v0.1.4 release line introduced the common producer-execution evidence contract while preserving the established Java lifecycle:
+The v0.2.0 release keeps the common producer-execution schema introduced in v0.1.4 and makes the retained output layout unambiguous:
 
 ```text
-tool.java-project   v0.1.4
+tool.java-project   v0.2.0
 Java CI baseline    Eclipse Temurin 8.0.504+1
 Maven               3.9.16
 Maven Wrapper       3.3.4
 tool.git-project    v0.2.4 / 6806a2c8b15df2122c4cc3355d2df9bd11ba2fc8
 ```
 
-The current source keeps that schema contract and intentionally tightens its retained-output layout: one producer execution has one canonical execution log, and the generated README is the navigation layer instead of a reason to retain byte-identical aliases. This is a deliberate pre-v1 interface cleanup and is versioned accordingly before consumers adopt it.
+One producer execution now has one canonical retained execution log at `evidence/executions/java-canonical/execution.log`. The generated README is the navigation/evidence map, so the byte-identical legacy `evidence/execution.log` path is deliberately removed. The `brainboxemb.execution-evidence` schema remains version 1; this release changes retained layout and readability rather than producer-envelope fields or Maven lifecycle semantics.
 
 A consumer should express the semantic Java-tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to a deliberate released interface. This gives people a readable version while keeping cross-repository workflow composition controlled.
 
@@ -147,7 +147,7 @@ cd tool.java-project
 
 The root launcher restores the exact committed `tools/tool.git-project` gitlink and delegates generic dependency handling to it. `update-repo.ps1` / `update-repo.sh` perform the controlled generic dependency-update pass after bootstrap.
 
-The v0.1.4 line pins that bootstrap gitlink to the exact `tool.git-project v0.2.4` release commit. This provides the released generic bootstrap, Moon/runtime portability, preview cleanup, stale-safe generated-output publication, release-request/tag lifecycle, and execution-evidence schema used by Java CI.
+The v0.2.0 line continues to pin that bootstrap gitlink to the exact `tool.git-project v0.2.4` release commit. This provides the released generic bootstrap, Moon/runtime portability, preview cleanup, stale-safe generated-output publication, release-request/tag lifecycle, and execution-evidence schema used by Java CI.
 
 For this repository `project.yml` currently has no additional managed externals; it exists to establish the shared generic/project-profile structure and to prove the same local flow consumers will use.
 
