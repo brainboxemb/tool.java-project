@@ -94,7 +94,7 @@ tool.git-project    v0.2.4 / 6806a2c8b15df2122c4cc3355d2df9bd11ba2fc8
 
 A consumer should express the semantic Java-tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to a deliberate released interface. This gives people a readable version while keeping cross-repository workflow composition controlled.
 
-Generic repository-lifecycle workflows are consumed from their own released owner. Java release-request/tag orchestration, generated-output publication and PR-preview cleanup therefore call released `tool.git-project v0.2.4` workflows rather than copying Git validation, tag, branch-selection, push or deletion logic into this repository. `tool.git-project v0.2.4` also owns the normatieve `brainboxemb.execution-evidence` v1 schema; Java remains responsible for emitting that envelope at the real canonical producer boundary.
+Generic repository-lifecycle workflows are consumed from their own released owner. Java release-request/tag orchestration, generated-output publication and PR-preview cleanup therefore call released `tool.git-project v0.2.4` workflows rather than copying Git validation, tag, branch-selection, push or deletion logic into this repository. `tool.git-project v0.2.4` also owns the normative `brainboxemb.execution-evidence` v1 schema; Java remains responsible for emitting that envelope at the real canonical producer boundary.
 
 The intended external-consumer model mirrors the SCAD project family:
 
@@ -257,7 +257,7 @@ The build/preparation action remains separate from publication. This is importan
 
 A tool release is prepared by a normal reviewed PR that sets a non-SNAPSHOT `VERSION` and moves the corresponding changes from `Unreleased` into a dated CHANGELOG section.
 
-After the release-preparation commit is merged and its normal `main` self-test and local-action test are green, `.github/workflows/release.yml` calls the released generic repository lifecycle in `tool.git-project v0.2.4`. That generic layer validates the exact current `main` SHA, `VERSION`, CHANGELOG section and required main workflow results, creates the annotated `vX.Y.Z` tag, dispatches `self-test.yml` at that tag, waits for it, and removes the temporary release-request branch.
+Before merge, the PR proves the direct local canonical action as well as the full Linux/Windows self-test. After the release-preparation commit is merged, `.github/workflows/release.yml` uses the green exact-main `self-test.yml` result as the release gate and calls the released generic repository lifecycle in `tool.git-project v0.2.4`. That generic layer validates the exact current `main` SHA, `VERSION`, CHANGELOG section and required main workflow result, creates the annotated `vX.Y.Z` tag, dispatches `self-test.yml` at that tag, waits for it, and removes the temporary release-request branch.
 
 The tagged Java self-test then owns the Java-specific half of release finalization:
 
