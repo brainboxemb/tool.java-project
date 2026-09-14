@@ -82,7 +82,7 @@ See [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the a
 
 `VERSION` is the source-controlled release version of `tool.java-project`; it is independent of the Maven version used by any product or fixture. A release tag is `v<VERSION>`.
 
-The v0.1.4 release line adds the common producer-execution evidence contract while preserving the established Java lifecycle:
+The v0.1.4 release line introduced the common producer-execution evidence contract while preserving the established Java lifecycle:
 
 ```text
 tool.java-project   v0.1.4
@@ -91,6 +91,8 @@ Maven               3.9.16
 Maven Wrapper       3.3.4
 tool.git-project    v0.2.4 / 6806a2c8b15df2122c4cc3355d2df9bd11ba2fc8
 ```
+
+The current source keeps that schema contract and intentionally tightens its retained-output layout: one producer execution has one canonical execution log, and the generated README is the navigation layer instead of a reason to retain byte-identical aliases. This is a deliberate pre-v1 interface cleanup and is versioned accordingly before consumers adopt it.
 
 A consumer should express the semantic Java-tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to a deliberate released interface. This gives people a readable version while keeping cross-repository workflow composition controlled.
 
@@ -196,7 +198,8 @@ The reusable verification workflow provides generic Java behaviour such as:
 - Maven Wrapper version/use validation;
 - Linux canonical verification and artifact production;
 - test-report/artifact collection;
-- retained canonical execution logging, common execution evidence and build provenance;
+- one retained canonical producer execution log, common execution evidence and build provenance;
+- a generated evidence map that explains producer/domain/orchestration/publication roles;
 - Windows compatibility verification;
 - canonical-artifact execution smoke tests when configured;
 - optional staging of selected canonical build files for generated publication.
@@ -226,14 +229,13 @@ Product repositories should follow the same thin-caller pattern rather than copy
 
 ## Generated build-output boundary
 
-A generated `bld` branch contains build output/evidence only. A typical tree is:
+A generated `bld` branch contains build output/evidence only. A typical producer tree is:
 
 ```text
 artifacts/
   <selected canonical build files>
 
 evidence/
-  execution.log
   toolchain-build-provenance.txt
   executions/
     java-canonical/
@@ -247,11 +249,15 @@ README.md
 source-sha.txt
 ```
 
-`evidence/executions/java-canonical/execution.json` is the stable domain-neutral entry point for the producer execution. It identifies the logical Java source revision separately from the exact `tool.java-project` owner revision and points to the richer Java provenance/Surefire evidence. `evidence/execution.log` remains as an additive compatibility path in v0.1.4.
+`evidence/executions/java-canonical/execution.json` is the stable domain-neutral entry point for the producer execution. It identifies the logical Java source revision separately from the exact `tool.java-project` owner revision and points to the richer Java provenance/Surefire evidence. Its `log` field resolves to the single canonical retained producer log beside it.
+
+The generated `README.md` is the human-facing evidence map. It distinguishes artifacts, producer execution evidence, richer Java/domain evidence, current orchestration/materialization evidence and publication context. Navigation is therefore solved by the index instead of retaining the same log under multiple paths.
 
 It must not contain a source checkout or managed tooling repositories. Temporary Actions artifacts continue to exist for job-to-job transfer and short-lived downloads; the generated branch is the convenient browsable view.
 
 The build/preparation action remains separate from publication. This is important for repository-level output caching: a prepared canonical output tree may be built or hydrated, while pushing a generated branch is still an explicit external side effect. Current orchestration/materialization evidence, when used by a consumer, stays separate and must not rewrite retained Java producer provenance.
+
+When cache hydration reuses input-equivalent producer output, the retained producer `source_revision` may intentionally be older than the current `orchestration/materialization.json` source revision. `orchestration/moon.log` records the current execute/cache/hydrate decision. That difference is expected provenance, not duplicate or conflicting evidence.
 
 ## Release workflow
 
@@ -293,13 +299,13 @@ The repository self-test proves independent layers:
    - Linux canonical action and artifact production;
    - independent Windows `verify`;
    - execution on Windows of the exact JAR uploaded by the Linux canonical job;
-4. readable Surefire summary and schema-valid common Java execution evidence from the canonical producer output;
+4. readable Surefire summary, one canonical retained producer log, schema-valid common Java execution evidence and the generated evidence-map README from the canonical producer output;
 5. Java release, publication and cleanup callers are pinned to released `tool.git-project@v0.2.4`;
 6. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld` through the stale-safe generic publisher;
 7. on `main`, publication to `prod/bld` through the same generic publisher;
 8. on a release tag, publication to `rel/vX.Y.Z/bld` before the Java GitHub Release is published.
 
-Linux Java evidence also includes test reports, `toolchain-build-provenance.txt` and `java-canonical-execution.log`. The prepared publication tree carries both the compatibility `evidence/execution.log` and the common `evidence/executions/java-canonical/{execution.json,execution.log}` pair.
+Linux Java evidence also includes test reports and `toolchain-build-provenance.txt`. The prepared publication tree carries the common `evidence/executions/java-canonical/{execution.json,execution.log}` pair and deliberately does not retain a second byte-identical legacy log.
 
 ## Development workflow
 
