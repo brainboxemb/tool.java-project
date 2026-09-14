@@ -130,9 +130,14 @@ jobs:
           grep -F '| 1 | 0 | 0 | 0 |' publication/evidence/tests/README.md
           grep -F 'com.brainboxemb.tool.fixture.AppTest' publication/evidence/tests/README.md
           grep -F '[Readable Surefire summary](evidence/tests/README.md)' publication/README.md
-          test -s publication/evidence/execution.log
+          test ! -e publication/evidence/execution.log
           test -s publication/evidence/executions/java-canonical/execution.log
           test -s publication/evidence/executions/java-canonical/execution.json
+          grep -F '## Producer execution evidence' publication/README.md
+          grep -F '## Domain evidence' publication/README.md
+          grep -F '## Orchestration/materialization evidence' publication/README.md
+          grep -F '## Publication context' publication/README.md
+          grep -F 'producer source revision above may intentionally differ from the current materialization source revision' publication/README.md
 
           python3 - <<'PY'
           import json
@@ -159,6 +164,10 @@ jobs:
           for key, value in expected.items():
               if execution.get(key) != value:
                   raise SystemExit(f'{key} mismatch: {execution.get(key)!r}')
+
+          producer_log = (execution_path.parent / execution['log']).resolve()
+          if not producer_log.is_file():
+              raise SystemExit(f'execution log target missing: {execution["log"]}')
 
           source_sha = (root / 'publication/source-sha.txt').read_text(encoding='utf-8').strip()
           if execution['source_revision'] != source_sha:

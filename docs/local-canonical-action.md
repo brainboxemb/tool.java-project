@@ -28,13 +28,14 @@ The action:
 1. validates the repository Maven Wrapper baseline;
 2. records the observed Java and Maven runtime versions;
 3. runs exactly one `./mvnw --batch-mode --no-transfer-progress verify`;
-4. retains the human-readable Maven execution log;
+4. retains one canonical human-readable Maven execution log;
 5. writes toolchain/build provenance;
 6. optionally copies selected canonical artifacts into a prepared output tree;
 7. copies the raw Surefire evidence from that same Maven run;
 8. generates a readable Surefire Markdown summary with a JDK-only helper;
 9. writes the logical source revision used for the prepared output;
-10. retains the common `brainboxemb.execution-evidence` v1 envelope for the `java.canonical` producer execution.
+10. retains the common `brainboxemb.execution-evidence` v1 envelope for the `java.canonical` producer execution;
+11. generates an evidence map that explains producer, domain, orchestration/materialization and publication evidence.
 
 The action does **not** publish Git branches, select GitHub runners, configure Moon caching or split Maven phases into new repository-level lifecycles.
 
@@ -49,7 +50,6 @@ When `--publication-root` is supplied, the generated tree is:
   artifacts/
     <selected canonical files>
   evidence/
-    execution.log
     toolchain-build-provenance.txt
     executions/
       java-canonical/
@@ -70,13 +70,23 @@ When `--publication-root` is supplied, the generated tree is:
 - success/exit status and the retained producer log;
 - relative links to Java-owned toolchain and Surefire evidence.
 
+The `log` field resolves to the single canonical retained producer log at `evidence/executions/java-canonical/execution.log`. The generated output does not retain a second byte-identical legacy copy merely for navigation.
+
 The exact JDK, Maven, Maven Wrapper, checked-out SHA and other Java-specific details remain in `evidence/toolchain-build-provenance.txt`; T6 does not duplicate that domain evidence into the common envelope.
 
-For the additive v0.1.4 interface, `evidence/execution.log` remains as a compatibility path. The canonical copy for the common contract is `evidence/executions/java-canonical/execution.log`.
+The generated `README.md` is the human-facing evidence map. It distinguishes:
+
+- artifacts;
+- producer execution evidence;
+- richer Java/domain evidence;
+- orchestration/materialization evidence that a consumer may add later;
+- publication context.
 
 This tree is suitable as a declared high-level task output for cache/hydration and as input to a later publication/finalization step.
 
 Publication remains a separate side effect. A cache hit may restore output produced at an earlier input-equivalent revision; later publication/materialization evidence must not rewrite the original producer evidence to pretend the Maven action ran again. Repository orchestration may add current materialization evidence separately, for example under `orchestration/`; that is not produced by `java-project.sh canonical`.
+
+After hydration, the producer `source_revision` may therefore intentionally differ from the current orchestration/materialization source revision. The generated evidence map explains this distinction so it is visible when browsing `prod/bld` or a PR preview.
 
 ## Current capability boundary
 

@@ -106,14 +106,13 @@ jobs:
 
 `publication-artifact-paths` is a newline-separated list of exact files relative to `working-directory`. The canonical Linux build must have produced each listed file. The preparation step copies those files by basename into the publication bundle and rejects basename collisions.
 
-The generated branch contains:
+The generated producer tree contains:
 
 ```text
 artifacts/
   <selected canonical build files>
 
 evidence/
-  execution.log
   toolchain-build-provenance.txt
   executions/
     java-canonical/
@@ -127,7 +126,15 @@ source-sha.txt
 
 The publication job does **not** run Maven again. It consumes the publication bundle prepared by the canonical Linux job.
 
-The common `evidence/executions/java-canonical/execution.json` envelope identifies the actual Java producer execution using the released `brainboxemb.execution-evidence` v1 contract. Java-specific toolchain/Surefire evidence remains in its existing domain-owned files. The top-level `evidence/execution.log` is retained as a compatibility path in the v0.1.4 line.
+The common `evidence/executions/java-canonical/execution.json` envelope identifies the actual Java producer execution using the released `brainboxemb.execution-evidence` v1 contract. Its `log` field points to the single canonical retained producer log beside it. Java-specific toolchain/Surefire evidence remains in its domain-owned files rather than being duplicated into the common envelope.
+
+The generated `README.md` is an evidence map rather than another evidence source. It explains the difference between:
+
+- selected build artifacts;
+- producer execution evidence (`execution.json` + its execution-local log);
+- richer Java/domain evidence (toolchain provenance and Surefire reports);
+- current orchestration/materialization evidence that a Moon-enabled consumer may add under `orchestration/`;
+- publication context.
 
 The Java wrapper does not implement Git branch selection or push mechanics. It supplies the domain-owned suffix `bld` to the released generic publisher in `tool.git-project v0.2.4`. That generic owner maps the trusted GitHub event context to `dev/pr-N/bld`, `prod/bld`, or `rel/vX.Y.Z/bld` and owns the normative execution-evidence schema used by producer owners.
 
@@ -145,7 +152,7 @@ The Linux job:
 2. provisions the exact configured Temurin Java baseline;
 3. validates the Maven Wrapper and expected Maven/Wrapper versions;
 4. runs `./mvnw verify` through the stable local canonical action;
-5. records build provenance, the common execution envelope and retained execution log;
+5. records build provenance, the common execution envelope and one retained canonical producer log;
 6. uploads the configured canonical artifact;
 7. uploads test/provenance evidence;
 8. when configured, prepares and uploads a generated-publication bundle from that same build.
@@ -176,7 +183,7 @@ canonical Linux-produced artifact really runs on Windows
 
 Both forms of evidence are useful.
 
-## Provenance
+## Provenance and materialization
 
 The Linux evidence contains `target/toolchain-build-provenance.txt`, including:
 
@@ -198,7 +205,16 @@ The common execution envelope deliberately distinguishes these identities:
 - `source_revision` is the logical consumer source revision supplied to the canonical action;
 - `owner_revision` is the exact `tool.java-project` revision that supplied the canonical action semantics.
 
-When a Moon-enabled consumer hydrates an input-equivalent prepared tree, these retained producer revisions must remain unchanged. Current orchestration/materialization evidence belongs beside the producer tree (for example under `orchestration/`) and may refer to the newer current revision without rewriting producer provenance.
+When a Moon-enabled consumer hydrates an input-equivalent prepared tree, these retained producer revisions must remain unchanged. Current orchestration/materialization evidence belongs beside the producer tree under `orchestration/` and may refer to the newer current revision without rewriting producer provenance.
+
+A hydrated publication may therefore legitimately show:
+
+```text
+producer execution source_revision     = older input-equivalent revision
+materialization source_revision        = current revision
+```
+
+That is the evidence that Moon reused a producer result instead of pretending the producer ran again. `orchestration/moon.log` gives the human-readable execute/cache/hydrate decision for the current invocation.
 
 ## Versioning and pinning policy
 

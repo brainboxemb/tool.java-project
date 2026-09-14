@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           root='fixture/minimal-java-app/target/java-build-publication'
           test -s "$root/artifacts/minimal-java-app-0.1.0-SNAPSHOT.jar"
-          test -s "$root/evidence/execution.log"
+          test ! -e "$root/evidence/execution.log"
           test -s "$root/evidence/executions/java-canonical/execution.log"
           test -s "$root/evidence/executions/java-canonical/execution.json"
           test -s "$root/evidence/toolchain-build-provenance.txt"
@@ -68,8 +68,12 @@ jobs:
           grep -Fq '"capability": "java.canonical"' "$root/evidence/executions/java-canonical/execution.json"
           grep -Fq '"owner": "brainboxemb/tool.java-project"' "$root/evidence/executions/java-canonical/execution.json"
           grep -Fq '"status": "success"' "$root/evidence/executions/java-canonical/execution.json"
-          grep -Fq '[Canonical execution log](evidence/execution.log)' "$root/README.md"
-          grep -Fq '[Common canonical execution evidence](evidence/executions/java-canonical/execution.json)' "$root/README.md"
+          grep -Fq '## Producer execution evidence' "$root/README.md"
+          grep -Fq '[Machine-readable canonical execution](evidence/executions/java-canonical/execution.json)' "$root/README.md"
+          grep -Fq '[Canonical execution log](evidence/executions/java-canonical/execution.log)' "$root/README.md"
+          grep -Fq '## Domain evidence' "$root/README.md"
+          grep -Fq '## Orchestration/materialization evidence' "$root/README.md"
+          grep -Fq '## Publication context' "$root/README.md"
 
       - name: Upload local-action evidence
         if: always()
