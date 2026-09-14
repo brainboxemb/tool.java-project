@@ -37,6 +37,16 @@ trim() {
   printf '%s' "$value"
 }
 
+json_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
 repo_identity() {
   if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
     printf '%s' "$GITHUB_REPOSITORY"
@@ -174,7 +184,10 @@ canonical() {
       publication_root="$working_directory/$publication_root"
     fi
     rm -rf "$publication_root"
-    mkdir -p "$publication_root/artifacts" "$publication_root/evidence/tests"
+    mkdir -p \
+      "$publication_root/artifacts" \
+      "$publication_root/evidence/tests" \
+      "$publication_root/evidence/executions/java-canonical"
 
     local configured_path resolved target_name copied=0
     for configured_path in "${publication_artifacts[@]}"; do
@@ -193,6 +206,28 @@ canonical() {
 
     cp target/toolchain-build-provenance.txt "$publication_root/evidence/toolchain-build-provenance.txt"
     cp target/java-canonical-execution.log "$publication_root/evidence/execution.log"
+    cp target/java-canonical-execution.log \
+      "$publication_root/evidence/executions/java-canonical/execution.log"
+
+    cat > "$publication_root/evidence/executions/java-canonical/execution.json" <<EOF
+{
+  "schema": "brainboxemb.execution-evidence",
+  "schema_version": 1,
+  "capability": "java.canonical",
+  "owner": "brainboxemb/tool.java-project",
+  "action": "canonical",
+  "source_revision": "$(json_escape "$source_revision")",
+  "owner_revision": "$(json_escape "$tool_revision")",
+  "status": "success",
+  "exit_code": 0,
+  "log": "execution.log",
+  "domain_evidence": [
+    "../../toolchain-build-provenance.txt",
+    "../../tests/README.md"
+  ],
+  "tool_java_project_version": "$(json_escape "$tool_version")"
+}
+EOF
 
     shopt -s globstar nullglob
     local report relative destination
@@ -236,6 +271,8 @@ canonical() {
       echo "## Evidence"
       echo
       echo "- [Canonical execution log](evidence/execution.log)"
+      echo "- [Common canonical execution evidence](evidence/executions/java-canonical/execution.json)"
+      echo "- [Common canonical execution log](evidence/executions/java-canonical/execution.log)"
       echo "- \`evidence/toolchain-build-provenance.txt\`"
       echo "- [Readable Surefire summary](evidence/tests/README.md)"
       echo
