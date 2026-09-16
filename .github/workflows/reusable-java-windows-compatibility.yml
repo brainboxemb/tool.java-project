@@ -3,6 +3,11 @@ name: Reusable Java Windows compatibility
 on:
   workflow_call:
     inputs:
+      source-revision:
+        description: Optional exact source commit for full Windows qualification; event source is used when omitted
+        required: false
+        type: string
+        default: ''
       working-directory:
         description: Java project directory containing pom.xml and Maven Wrapper
         required: false
@@ -59,8 +64,21 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout consumer
+      - name: Validate exact source when supplied
+        shell: pwsh
+        env:
+          SOURCE_REVISION: ${{ inputs.source-revision }}
+        run: |
+          if ($env:SOURCE_REVISION -and $env:SOURCE_REVISION -notmatch '^[0-9a-f]{40}$') {
+            throw 'source-revision must be an exact 40-character commit SHA when supplied'
+          }
+
+      - name: Checkout exact consumer source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.source-revision || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Set up exact Java 8 baseline
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6

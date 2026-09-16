@@ -90,12 +90,21 @@ jobs:
         shell: bash
         env:
           WINDOWS_MODE: ${{ inputs.windows-mode }}
+          BASE_REVISION: ${{ inputs.base-revision }}
+          HEAD_REVISION: ${{ inputs.head-revision }}
         run: |
           set -euo pipefail
           case "$WINDOWS_MODE" in
             auto|none|smoke|full) ;;
             *) echo "ERROR: windows-mode must be auto, none, smoke or full" >&2; exit 2 ;;
           esac
+          for revision_name in BASE_REVISION HEAD_REVISION; do
+            revision="${!revision_name}"
+            if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "ERROR: ${revision_name} must be an exact 40-character commit SHA" >&2
+              exit 2
+            fi
+          done
 
       - name: Checkout exact consumer source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -174,6 +183,7 @@ jobs:
     needs: preflight
     uses: ./.github/workflows/reusable-java-verify.yml
     with:
+      source-revision: ${{ inputs.head-revision }}
       working-directory: ${{ inputs.working-directory }}
       java-version: ${{ inputs.java-version }}
       maven-version: ${{ inputs.maven-version }}
