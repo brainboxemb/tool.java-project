@@ -78,25 +78,52 @@ The reusable Linux canonical workflow calls this same action. Local development,
 
 See [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the action contract and prepared-output model.
 
+## Shared Java production lifecycle
+
+The v0.3.0 line adds the Migration-006 repository execution lifecycle around that unchanged canonical Maven producer:
+
+```text
+exact base -> head preflight
+        ↓
+one generic affected query
+        ↓
+Java impact + Windows-mode classification
+        ├─ unrelated      -> stop before JDK/Maven/Windows
+        ├─ normal Java    -> Linux canonical + Windows smoke
+        └─ build/tooling  -> Linux canonical + full Windows verify + smoke
+        ↓
+finalize prepared bld output
+        ↓
+generic generated-output publication
+```
+
+`windows-mode` is `auto|none|smoke|full`. In `auto`, ordinary affected Java changes use the exact Linux-produced runnable artifact for Windows smoke without a second Maven build; build/toolchain-sensitive changes select full native Windows Maven verification in addition to that exact-artifact smoke. Release qualification uses the full path.
+
+Preflight, Linux execution, full Windows execution and retained provenance use the same resolved exact source revision. Publication/finalization consumes the already-prepared canonical output and never reruns Maven merely to publish `bld`.
+
+The generic base/head affected query and repository publication mechanics remain owned by released `tool.git-project`. `tool.java-project` owns Java impact mapping, canonical Maven execution, Java evidence, selective Windows qualification and Java-output finalization. Engineering-documentation assembly remains outside this Java lifecycle.
+
+See [`docs/execution-lifecycle.md`](docs/execution-lifecycle.md) for the detailed owner boundary and execution flow.
+
 ## Tool release baseline
 
 `VERSION` is the source-controlled release version of `tool.java-project`; it is independent of the Maven version used by any product or fixture. A release tag is `v<VERSION>`.
 
-The v0.2.0 release keeps the common producer-execution schema introduced in v0.1.4 and makes the retained output layout unambiguous:
+The v0.3.0 release adds the shared Migration-006 execution lifecycle while retaining the producer-evidence layout established by v0.2.0:
 
 ```text
-tool.java-project   v0.2.0
+tool.java-project   v0.3.0
 Java CI baseline    Eclipse Temurin 8.0.504+1
 Maven               3.9.16
 Maven Wrapper       3.3.4
-tool.git-project    v0.2.4 / 6806a2c8b15df2122c4cc3355d2df9bd11ba2fc8
+tool.git-project    v0.2.8 / 7c43f37e7b07cfb57638a1d1dad2501de09ba7eb
 ```
 
-One producer execution now has one canonical retained execution log at `evidence/executions/java-canonical/execution.log`. The generated README is the navigation/evidence map, so the byte-identical legacy `evidence/execution.log` path is deliberately removed. The `brainboxemb.execution-evidence` schema remains version 1; this release changes retained layout and readability rather than producer-envelope fields or Maven lifecycle semantics.
+One producer execution has one canonical retained execution log at `evidence/executions/java-canonical/execution.log`. The generated README is the navigation/evidence map, so the byte-identical legacy `evidence/execution.log` path remains removed. The `brainboxemb.execution-evidence` schema remains version 1; v0.3.0 changes repository execution/orchestration rather than the canonical producer-envelope fields.
 
 A consumer should express the semantic Java-tool release in its project dependency configuration while reusable GitHub workflow callers remain pinned to a deliberate released interface. This gives people a readable version while keeping cross-repository workflow composition controlled.
 
-Generic repository-lifecycle workflows are consumed from their own released owner. Java release-request/tag orchestration, generated-output publication and PR-preview cleanup therefore call released `tool.git-project v0.2.4` workflows rather than copying Git validation, tag, branch-selection, push or deletion logic into this repository. `tool.git-project v0.2.4` also owns the normative `brainboxemb.execution-evidence` v1 schema; Java remains responsible for emitting that envelope at the real canonical producer boundary.
+Generic repository-lifecycle workflows are consumed from their own released owner. Java affected querying, release-request/tag orchestration, generated-output publication and PR-preview cleanup therefore build on released `tool.git-project v0.2.8` contracts rather than copying Git/Moon/runtime, tag, branch-selection, push or deletion mechanics into this repository. `tool.git-project v0.2.8` also owns the normative `brainboxemb.execution-evidence` v1 schema; Java remains responsible for emitting that envelope at the real canonical producer boundary.
 
 The intended external-consumer model mirrors the SCAD project family:
 
@@ -111,7 +138,7 @@ real Java repositories
     product-specific implementation and realistic integration evidence
 ```
 
-The internal fixture in this repository remains the fast first-line tooling test. The separate `template.java-project` reference consumer is intended to prove that the released contract can actually be consumed from a clean independent repository; real products then provide additional realistic evidence.
+The internal fixture in this repository remains the fast first-line tooling test. The separate `template.java-project` reference consumer proves that the released contract can actually be consumed from a clean independent repository; real products then provide additional realistic evidence.
 
 ## Initial toolchain baseline
 
@@ -123,7 +150,7 @@ The internal fixture in this repository remains the fast first-line tooling test
 - compatibility environment: GitHub-hosted Windows;
 - Docker: not required for normal compile/unit-test paths.
 
-The baseline values are also recorded in `project.java.yml`. The reusable workflows continue to take explicit inputs in this revision; later tooling may validate/read the Java profile directly once the profile contract has been exercised by real consumers.
+The baseline values are also recorded in `project.java.yml`. The reusable workflows continue to take explicit inputs in this revision; consumers retain their own Maven/POM/module layout and product tests.
 
 ## Local checkout and bootstrap
 
@@ -147,7 +174,7 @@ cd tool.java-project
 
 The root launcher restores the exact committed `tools/tool.git-project` gitlink and delegates generic dependency handling to it. `update-repo.ps1` / `update-repo.sh` perform the controlled generic dependency-update pass after bootstrap.
 
-The v0.2.0 line continues to pin that bootstrap gitlink to the exact `tool.git-project v0.2.4` release commit. This provides the released generic bootstrap, Moon/runtime portability, preview cleanup, stale-safe generated-output publication, release-request/tag lifecycle, and execution-evidence schema used by Java CI.
+The v0.3.0 line pins that bootstrap gitlink to the exact `tool.git-project v0.2.8` release commit. This provides the released generic bootstrap, Moon affected-query/runtime portability, preview cleanup, stale-safe generated-output publication, release-request/tag lifecycle, and execution-evidence schema used by Java CI.
 
 For this repository `project.yml` currently has no additional managed externals; it exists to establish the shared generic/project-profile structure and to prove the same local flow consumers will use.
 
@@ -155,29 +182,34 @@ For this repository `project.yml` currently has no additional managed externals;
 
 ```text
 .github/workflows/
-  reusable-java-verify.yml    reusable canonical build/test workflow
-  reusable-java-publish.yml   thin bld wrapper around generic Git publisher
-  pr-cleanup.yml              thin caller of tagged generic Git cleanup
-  local-action-test.yml       direct stable-action fixture proof
-  self-test.yml               local-bootstrap + Java fixture/release proof
-  release.yml                 thin caller of generic repository release lifecycle
+  reusable-java-verify.yml                   reusable canonical build/test workflow
+  reusable-java-production.yml               shared affected/preflight production lifecycle
+  reusable-java-windows-compatibility.yml    selective Windows smoke/full qualification
+  reusable-java-publish.yml                  thin bld wrapper around generic Git publisher
+  affected-policy-test.yml                   affected/Windows classification regression proof
+  pr-cleanup.yml                             thin caller of tagged generic Git cleanup
+  local-action-test.yml                      direct stable-action fixture proof
+  self-test.yml                              local-bootstrap + Java fixture/release proof
+  release.yml                                thin caller of generic repository release lifecycle
 docs/
-  consumer-usage.md           workflow contract, pinning and evidence model
-  local-canonical-action.md   stable local domain-action contract
+  consumer-usage.md                          workflow contract, pinning and evidence model
+  execution-lifecycle.md                     Migration-006 execution and ownership contract
+  local-canonical-action.md                  stable local domain-action contract
 
 fixture/
-  minimal-java-app/           generic runnable Java 8 test fixture
+  minimal-java-app/                          generic runnable Java 8 test fixture
 
 support/
-  SurefireSummary.java        JDK-only readable Surefire report generator
+  SurefireSummary.java                       JDK-only readable Surefire report generator
 
 tools/
-  tool.git-project/           pinned bootstrap submodule
+  tool.git-project/                          pinned bootstrap submodule
 
-java-project.sh               stable local Java domain action
-VERSION                       tool.java-project release version
-project.yml                   generic repository/profile declaration
-project.java.yml              Java-specific baseline
+java-preflight.sh                            Java impact / Windows-mode classification
+java-project.sh                              stable local Java domain action
+VERSION                                      tool.java-project release version
+project.yml                                  generic repository/profile declaration
+project.java.yml                             Java-specific baseline
 bootstrap.ps1 / bootstrap.sh
 update-repo.ps1 / update-repo.sh
 AGENTS.md
@@ -189,20 +221,23 @@ README.md
 
 A consumer repository keeps its own `pom.xml`, source/tests and Maven Wrapper. It can use the same generic Git bootstrap pattern locally, call the stable local Java action, and/or call the reusable workflows from this repository using a deliberate pinned reference.
 
-See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete CI contract and example caller workflow, and [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the local/orchestration-facing action.
+See [`docs/consumer-usage.md`](docs/consumer-usage.md) for the complete CI contract and example caller workflow, [`docs/execution-lifecycle.md`](docs/execution-lifecycle.md) for repository production, and [`docs/local-canonical-action.md`](docs/local-canonical-action.md) for the local/orchestration-facing producer action.
 
-The reusable verification workflow provides generic Java behaviour such as:
+The reusable Java workflows provide generic behaviour such as:
 
-- explicit Java provisioning;
+- exact source/base preflight before Java runtime allocation;
+- one generic affected query through released `tool.git-project`;
+- explicit Java provisioning only for affected Java work;
 - invocation of the stable canonical local action on Linux;
 - Maven Wrapper version/use validation;
 - Linux canonical verification and artifact production;
 - test-report/artifact collection;
 - one retained canonical producer execution log, common execution evidence and build provenance;
 - a generated evidence map that explains producer/domain/orchestration/publication roles;
-- Windows compatibility verification;
-- canonical-artifact execution smoke tests when configured;
-- optional staging of selected canonical build files for generated publication.
+- selective Windows `none|smoke|full` qualification;
+- exact Linux-canonical-artifact execution on Windows for smoke/full modes;
+- native Windows Maven verification only for full mode;
+- optional staging/finalization of selected canonical build files for generated publication without a duplicate Maven build.
 
 The Java publication wrapper passes that prepared bundle to the released generic Git publisher with suffix `bld`. The resulting lifecycle is:
 
@@ -218,7 +253,7 @@ Keeping preparation separate from publication allows normal verification jobs to
 
 ```text
 brainboxemb/tool.git-project/.github/workflows/
-  reusable-pr-preview-cleanup.yml@v0.2.4
+  reusable-pr-preview-cleanup.yml@v0.2.8
 ```
 
 Java supplies only its domain-owned preview suffix, `bld`. `tool.git-project` owns the branch deletion mechanics and constrains targets to `dev/pr-<positive integer>/<validated suffix>`.
@@ -263,7 +298,7 @@ When cache hydration reuses input-equivalent producer output, the retained produ
 
 A tool release is prepared by a normal reviewed PR that sets a non-SNAPSHOT `VERSION` and moves the corresponding changes from `Unreleased` into a dated CHANGELOG section.
 
-Before merge, the PR proves the direct local canonical action as well as the full Linux/Windows self-test. After the release-preparation commit is merged, `.github/workflows/release.yml` uses the green exact-main `self-test.yml` result as the release gate and calls the released generic repository lifecycle in `tool.git-project v0.2.4`. That generic layer validates the exact current `main` SHA, `VERSION`, CHANGELOG section and required main workflow result, creates the annotated `vX.Y.Z` tag, dispatches `self-test.yml` at that tag, waits for it, and removes the temporary release-request branch.
+Before merge, the PR proves the affected-policy contract, direct local canonical action and the full Linux/Windows self-test. After the release-preparation commit is merged, `.github/workflows/release.yml` uses the green exact-main `self-test.yml` result as the release gate and calls the released generic repository lifecycle in `tool.git-project v0.2.8`. That generic layer validates the exact current `main` SHA, `VERSION`, CHANGELOG section and required main workflow result, creates the annotated `vX.Y.Z` tag, dispatches `self-test.yml` at that tag, waits for it, and removes the temporary release-request branch.
 
 The tagged Java self-test then owns the Java-specific half of release finalization:
 
@@ -285,7 +320,7 @@ Do not add product-specific assumptions here, including:
 - one product's Raspberry Pi image content;
 - Docker services merely because a Java build exists.
 
-Repository-level orchestration also remains outside this repository: Moon task selection/cache policy is not part of `tool.java-project`. This repository exposes stable Java domain actions that such an orchestrator may call.
+Cross-repository engineering-documentation assembly remains outside `tool.java-project`. Generic base/head affected mechanics remain in `tool.git-project`; Java owns only the Java-specific classification and execution semantics layered on that generic result.
 
 Docker/Compose may be introduced by consumers for real external-service integration tests such as RabbitMQ, but it is not part of the fast Java build baseline.
 
@@ -293,17 +328,18 @@ Docker/Compose may be introduced by consumers for real external-service integrat
 
 The repository self-test proves independent layers:
 
-1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project v0.2.4` gitlink;
+1. local root bootstrap/update on Ubuntu and Windows using the pinned `tool.git-project v0.2.8` gitlink;
 2. the stable local canonical action against the internal fixture;
-3. Java fixture verification through the reusable workflow:
+3. exact base/head affected classification, including unrelated -> none, normal Java -> smoke and build/toolchain-sensitive -> full;
+4. Java fixture verification through the reusable workflow:
    - Linux canonical action and artifact production;
-   - independent Windows `verify`;
+   - native Windows `verify` on the full path;
    - execution on Windows of the exact JAR uploaded by the Linux canonical job;
-4. readable Surefire summary, one canonical retained producer log, schema-valid common Java execution evidence and the generated evidence-map README from the canonical producer output;
-5. Java release, publication and cleanup callers are pinned to released `tool.git-project@v0.2.4`;
-6. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld` through the stale-safe generic publisher;
-7. on `main`, publication to `prod/bld` through the same generic publisher;
-8. on a release tag, publication to `rel/vX.Y.Z/bld` before the Java GitHub Release is published.
+5. readable Surefire summary, one canonical retained producer log, schema-valid common Java execution evidence and the generated evidence-map README from the canonical producer output;
+6. Java release, publication and cleanup callers are pinned to released `tool.git-project@v0.2.8`;
+7. on pull requests, publication of the prepared fixture build tree to `dev/pr-N/bld` through the stale-safe generic publisher;
+8. on `main`, publication to `prod/bld` through the same generic publisher;
+9. on a release tag, publication to `rel/vX.Y.Z/bld` before the Java GitHub Release is published.
 
 Linux Java evidence also includes test reports and `toolchain-build-provenance.txt`. The prepared publication tree carries the common `evidence/executions/java-canonical/{execution.json,execution.log}` pair and deliberately does not retain a second byte-identical legacy log.
 
