@@ -32,7 +32,7 @@
 
 - Expose the existing native-Windows compatibility build and exact Linux-canonical-artifact smoke as a separately consumable reusable workflow.
 - Keep Maven Wrapper validation, Windows `mvn verify`, test evidence, and canonical-artifact smoke owned by `tool.java-project` instead of copying Java build semantics into repository templates.
-- Refactor the existing all-in-one Java verify workflow to call the new Windows capability after its one Linux canonical build instead of carrying duplicate Windows job definitions.
+- Refactor the existing all-in-one Java verify workflow to call the new Windows capability after its Linux canonical build, preserving current behaviour while proving the new interface in owner CI.
 - Enable Moon-orchestrated consumers to execute the Linux canonical Maven lifecycle once, then retain the established independent Windows evidence without triggering a second Linux build.
 
 ## 0.1.2 — 2026-09-13
@@ -55,7 +55,7 @@
 - Generate the readable Surefire summary through a JDK-only helper so the canonical local action does not add Python as a Java-build prerequisite.
 - Keep publication/finalization separate from the cacheable/prepared canonical output tree.
 - Use the released `tool.git-project v0.1.0` reusable cleanup workflow for Java `dev/pr-<N>/bld` lifecycle cleanup instead of adding Java-specific branch-deletion logic.
-- Provide both automatic `pull_request: closed` cleanup and an explicit manual cleanup entry for legacy/stale previews.
+- Provide both automatic `pull_request: closed` cleanup and an explicit manual cleanup entry for legacy/stale PR previews.
 - Adopt the exact `tool.git-project v0.1.0` bootstrap-tool commit so local Java tooling also receives the corrected dirty-worktree-before-checkout ordering.
 - Restore the documented main-publication lifecycle by invoking the generated-output publisher on `main`, producing the `prod/bld` branch after a successful canonical build.
 
