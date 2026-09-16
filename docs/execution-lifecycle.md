@@ -57,26 +57,39 @@ Run both:
 
 Use for Java build/toolchain/platform-sensitive changes and release qualification.
 
-## Policy selection
+## Automatic policy and explicit override
 
 Normal consumers should use `windows-mode: auto`.
 
-In `auto`, the shared preflight derives qualification from the affected task/capability set:
+`auto` is not itself a qualification level. It asks the shared preflight to select a level from two explicit inputs:
+
+- the affected capability set;
+- `windows-default-mode`, which defines the normal Windows level for an affected Java change.
+
+The initial shared default is:
+
+```text
+windows-default-mode: smoke
+```
+
+Resolution is therefore:
 
 ```text
 Java not affected        -> none
-Java affected            -> smoke
+Java affected            -> windows-default-mode
 Windows-full affected    -> full
 release qualification    -> full
 ```
 
-A consumer may expose an explicit override for exceptional/manual qualification:
+A project may deliberately choose another default such as `none` if Windows smoke is not useful for that product, or `full` for a highly platform-sensitive Java project.
+
+A consumer may also expose an explicit override for exceptional/manual qualification:
 
 ```text
-auto | none | smoke | full
+windows-mode: auto | none | smoke | full
 ```
 
-`full` is the important escape hatch when a reviewer wants stronger Windows evidence than the automatic impact classification selected. The automatic path remains the default.
+`full` is the important escape hatch when a reviewer wants stronger Windows evidence than the automatic impact classification selected. `smoke` and `none` are also explicit overrides, but normal pull requests should remain on `auto` so policy stays centralized.
 
 ## Ownership
 
@@ -85,11 +98,12 @@ auto | none | smoke | full
 `tool.java-project` owns:
 
 - mapping Java capability impact to Java lifecycle decisions;
+- the default Windows qualification policy;
 - canonical Linux Maven execution;
 - Java producer/test/provenance evidence;
 - Windows smoke/full qualification behaviour;
 - Java-produced output preparation/finalization.
 
-Consumers own the task inputs that describe what changes affect their Java and Windows-sensitive capabilities.
+Consumers own the task inputs that describe what changes affect their Java and Windows-sensitive capabilities, and may override the shared default only where product evidence justifies that difference.
 
 Project-family requirements, planning, architecture and assembled engineering documentation are not part of this lifecycle.
