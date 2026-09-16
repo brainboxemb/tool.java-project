@@ -24,7 +24,7 @@ jobs:
     # Generic request validation, main-run gates, tag creation and request-branch
     # cleanup belong to tool.git-project. Java-specific provenance and GitHub
     # Release assets remain in the tagged self-test below this boundary.
-    uses: brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.2.4
+    uses: brainboxemb/tool.git-project/.github/workflows/reusable-release.yml@v0.2.8
     with:
       version: ${{ inputs.version || '' }}
       release_sha: ${{ inputs.release_sha || '' }}

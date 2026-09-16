@@ -3,6 +3,11 @@ name: Reusable Java verify
 on:
   workflow_call:
     inputs:
+      source-revision:
+        description: Optional exact source commit to execute; event source is used when omitted
+        required: false
+        type: string
+        default: ''
       working-directory:
         description: Java project directory containing pom.xml and Maven Wrapper
         required: false
@@ -52,6 +57,11 @@ on:
         required: false
         type: string
         default: ''
+      windows-mode:
+        description: 'Windows qualification mode: none, smoke or full'
+        required: false
+        type: string
+        default: full
 
 permissions:
   contents: read
@@ -63,8 +73,28 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout consumer
+      - name: Validate execution inputs
+        shell: bash
+        env:
+          WINDOWS_MODE: ${{ inputs.windows-mode }}
+          SOURCE_REVISION: ${{ inputs.source-revision }}
+        run: |
+          set -euo pipefail
+          case "$WINDOWS_MODE" in
+            none|smoke|full) ;;
+            *) echo "ERROR: windows-mode must be none, smoke or full" >&2; exit 2 ;;
+          esac
+          if [[ -n "$SOURCE_REVISION" && ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "ERROR: source-revision must be an exact 40-character commit SHA when supplied" >&2
+            exit 2
+          fi
+
+      - name: Checkout exact consumer source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.source-revision || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Set up exact Java 8 baseline
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
@@ -82,12 +112,14 @@ jobs:
           repository: brainboxemb/tool.java-project
           ref: ${{ github.workflow_sha }}
           path: .tooling/tool.java-project
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Run canonical Java action
         shell: bash
         env:
           PUBLICATION_ARTIFACT_PATHS: ${{ inputs.publication-artifact-paths }}
-          SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_REVISION: ${{ inputs.source-revision || github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           args=(
@@ -145,6 +177,7 @@ jobs:
     needs: linux-canonical
     uses: ./.github/workflows/reusable-java-windows-compatibility.yml
     with:
+      source-revision: ${{ inputs.source-revision }}
       working-directory: ${{ inputs.working-directory }}
       java-version: ${{ inputs.java-version }}
       maven-version: ${{ inputs.maven-version }}
@@ -153,3 +186,4 @@ jobs:
       runnable-jar-name: ${{ inputs.runnable-jar-name }}
       smoke-expected-output: ${{ inputs.smoke-expected-output }}
       test-report-path: ${{ inputs.test-report-path }}
+      windows-mode: ${{ inputs.windows-mode }}

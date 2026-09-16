@@ -1,0 +1,197 @@
+name: Reusable Java production
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Java project directory containing pom.xml and Maven Wrapper
+        required: false
+        type: string
+        default: .
+      affected-task:
+        description: Fully-qualified Moon task for the canonical Java capability
+        required: false
+        type: string
+        default: consumer:java.canonical
+      windows-full-task:
+        description: Fully-qualified Moon task whose impact requires full Windows Maven qualification
+        required: false
+        type: string
+        default: consumer:java.windows-full
+      windows-mode:
+        description: 'Windows qualification policy: auto, none, smoke or full'
+        required: false
+        type: string
+        default: auto
+      base-revision:
+        description: Exact comparison base commit for affected analysis
+        required: true
+        type: string
+      head-revision:
+        description: Exact source commit to qualify
+        required: true
+        type: string
+      java-version:
+        required: false
+        type: string
+        default: '8.0.504+1'
+      maven-version:
+        required: false
+        type: string
+        default: '3.9.16'
+      maven-wrapper-version:
+        required: false
+        type: string
+        default: '3.3.4'
+      artifact-name:
+        required: false
+        type: string
+        default: java-canonical-artifact
+      artifact-path:
+        required: true
+        type: string
+      runnable-jar-name:
+        required: false
+        type: string
+        default: ''
+      smoke-expected-output:
+        required: false
+        type: string
+        default: ''
+      test-report-path:
+        required: false
+        type: string
+        default: '**/target/surefire-reports/**'
+      publication-artifact-paths:
+        required: false
+        type: string
+        default: ''
+    outputs:
+      affected:
+        description: Whether canonical Java execution is required
+        value: ${{ jobs.preflight.outputs.affected }}
+      windows-mode:
+        description: Resolved Windows qualification mode
+        value: ${{ jobs.preflight.outputs.windows_mode }}
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Java affected preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      affected: ${{ steps.resolve.outputs.affected }}
+      windows_mode: ${{ steps.resolve.outputs.windows_mode }}
+    steps:
+      - name: Validate policy inputs
+        shell: bash
+        env:
+          WINDOWS_MODE: ${{ inputs.windows-mode }}
+          BASE_REVISION: ${{ inputs.base-revision }}
+          HEAD_REVISION: ${{ inputs.head-revision }}
+        run: |
+          set -euo pipefail
+          case "$WINDOWS_MODE" in
+            auto|none|smoke|full) ;;
+            *) echo "ERROR: windows-mode must be auto, none, smoke or full" >&2; exit 2 ;;
+          esac
+          for revision_name in BASE_REVISION HEAD_REVISION; do
+            revision="${!revision_name}"
+            if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "ERROR: ${revision_name} must be an exact 40-character commit SHA" >&2
+              exit 2
+            fi
+          done
+
+      - name: Checkout exact consumer source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.head-revision }}
+          fetch-depth: 1
+          filter: blob:none
+          submodules: false
+          persist-credentials: false
+
+      - name: Fetch exact affected-analysis base
+        shell: bash
+        env:
+          BASE_REVISION: ${{ inputs.base-revision }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --filter=blob:none --depth=1 origin "$BASE_REVISION"
+          git rev-parse --verify "${BASE_REVISION}^{commit}" >/dev/null
+
+      - name: Checkout exact generic affected owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.git-project
+          ref: 7c43f37e7b07cfb57638a1d1dad2501de09ba7eb # v0.2.8
+          path: .tooling/tool.git-project
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout exact Java preflight owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.java-project
+          ref: ${{ github.workflow_sha }}
+          path: .tooling/tool.java-project
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve Java and Windows impact once
+        id: resolve
+        shell: bash
+        env:
+          BASE_REVISION: ${{ inputs.base-revision }}
+          HEAD_REVISION: ${{ inputs.head-revision }}
+          JAVA_TASK: ${{ inputs.affected-task }}
+          WINDOWS_FULL_TASK: ${{ inputs.windows-full-task }}
+          REQUESTED_WINDOWS_MODE: ${{ inputs.windows-mode }}
+        run: |
+          set -euo pipefail
+          bash .tooling/tool.java-project/java-preflight.sh \
+            --repo . \
+            --base "$BASE_REVISION" \
+            --head "$HEAD_REVISION" \
+            --java-task "$JAVA_TASK" \
+            --windows-full-task "$WINDOWS_FULL_TASK" \
+            --windows-mode "$REQUESTED_WINDOWS_MODE" \
+            --git-tool-root .tooling/tool.git-project \
+            --evidence-dir .moon/preflight/java
+
+          source .moon/preflight/java/decision.env
+          printf 'affected=%s\n' "$java_affected" >> "$GITHUB_OUTPUT"
+          printf 'windows_mode=%s\n' "$windows_mode" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preflight evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ inputs.artifact-name }}-preflight
+          path: .moon/preflight
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  verify:
+    name: Java execution
+    if: ${{ needs.preflight.outputs.affected == 'true' }}
+    needs: preflight
+    uses: ./.github/workflows/reusable-java-verify.yml
+    with:
+      source-revision: ${{ inputs.head-revision }}
+      working-directory: ${{ inputs.working-directory }}
+      java-version: ${{ inputs.java-version }}
+      maven-version: ${{ inputs.maven-version }}
+      maven-wrapper-version: ${{ inputs.maven-wrapper-version }}
+      artifact-name: ${{ inputs.artifact-name }}
+      artifact-path: ${{ inputs.artifact-path }}
+      runnable-jar-name: ${{ inputs.runnable-jar-name }}
+      smoke-expected-output: ${{ inputs.smoke-expected-output }}
+      test-report-path: ${{ inputs.test-report-path }}
+      publication-artifact-paths: ${{ inputs.publication-artifact-paths }}
+      windows-mode: ${{ needs.preflight.outputs.windows_mode }}
