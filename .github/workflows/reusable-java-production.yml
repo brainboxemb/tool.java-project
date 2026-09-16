@@ -103,6 +103,8 @@ jobs:
           ref: ${{ inputs.head-revision }}
           fetch-depth: 1
           filter: blob:none
+          submodules: false
+          persist-credentials: false
 
       - name: Fetch exact affected-analysis base
         shell: bash
@@ -113,14 +115,25 @@ jobs:
           git fetch --no-tags --filter=blob:none --depth=1 origin "$BASE_REVISION"
           git rev-parse --verify "${BASE_REVISION}^{commit}" >/dev/null
 
-      - name: Bootstrap pinned generic repository tooling
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./bootstrap.sh
-          test -x tools/tool.git-project/moon-affected.sh
+      - name: Checkout exact generic affected owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.git-project
+          ref: 7c43f37e7b07cfb57638a1d1dad2501de09ba7eb # v0.2.8
+          path: .tooling/tool.git-project
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Resolve Java and Windows impact
+      - name: Checkout exact Java preflight owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.java-project
+          ref: ${{ github.workflow_sha }}
+          path: .tooling/tool.java-project
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve Java and Windows impact once
         id: resolve
         shell: bash
         env:
@@ -131,34 +144,19 @@ jobs:
           REQUESTED_WINDOWS_MODE: ${{ inputs.windows-mode }}
         run: |
           set -euo pipefail
-          mkdir -p .moon/preflight/java .moon/preflight/windows-full
+          bash .tooling/tool.java-project/java-preflight.sh \
+            --repo . \
+            --base "$BASE_REVISION" \
+            --head "$HEAD_REVISION" \
+            --java-task "$JAVA_TASK" \
+            --windows-full-task "$WINDOWS_FULL_TASK" \
+            --windows-mode "$REQUESTED_WINDOWS_MODE" \
+            --git-tool-root .tooling/tool.git-project \
+            --evidence-dir .moon/preflight/java
 
-          java_affected="$(bash tools/tool.git-project/moon-affected.sh "$JAVA_TASK" \
-            --base "$BASE_REVISION" --head "$HEAD_REVISION" \
-            --evidence-dir .moon/preflight/java)"
-
-          if [[ "$java_affected" == true ]]; then
-            windows_full_affected="$(bash tools/tool.git-project/moon-affected.sh "$WINDOWS_FULL_TASK" \
-              --base "$BASE_REVISION" --head "$HEAD_REVISION" \
-              --evidence-dir .moon/preflight/windows-full)"
-          else
-            windows_full_affected=false
-          fi
-
-          resolved=none
-          if [[ "$java_affected" == true ]]; then
-            case "$REQUESTED_WINDOWS_MODE" in
-              auto)
-                if [[ "$windows_full_affected" == true ]]; then resolved=full; else resolved=smoke; fi
-                ;;
-              none|smoke|full) resolved="$REQUESTED_WINDOWS_MODE" ;;
-            esac
-          fi
-
+          source .moon/preflight/java/decision.env
           printf 'affected=%s\n' "$java_affected" >> "$GITHUB_OUTPUT"
-          printf 'windows_mode=%s\n' "$resolved" >> "$GITHUB_OUTPUT"
-          printf 'java_affected=%s windows_full_affected=%s windows_mode=%s\n' \
-            "$java_affected" "$windows_full_affected" "$resolved"
+          printf 'windows_mode=%s\n' "$windows_mode" >> "$GITHUB_OUTPUT"
 
       - name: Upload preflight evidence
         if: always()
@@ -167,6 +165,7 @@ jobs:
           name: ${{ inputs.artifact-name }}-preflight
           path: .moon/preflight
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   verify:
