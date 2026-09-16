@@ -158,8 +158,6 @@ jobs:
           retention-days: 14
 
   windows:
-    name: Windows qualification
-    if: ${{ inputs.windows-mode != 'none' }}
     needs: linux-canonical
     uses: ./.github/workflows/reusable-java-windows-compatibility.yml
     with:
