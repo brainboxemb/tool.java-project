@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-16
+
+- Add the shared Migration-006 Java execution lifecycle with an early exact base-to-head affected preflight before JDK, Maven or Windows allocation.
+- Resolve Java and Windows qualification policy from one released `tool.git-project v0.2.8` affected query instead of duplicating repository-impact logic.
+- Add selective `windows-mode: auto|none|smoke|full`: normal affected Java changes use exact Linux-artifact smoke, while build/toolchain-sensitive or release qualification can require full native Windows Maven verification.
+- Carry the exact selected source revision through preflight, canonical Linux execution, full Windows execution and retained provenance.
+- Add the reusable Java production lifecycle and keep generated-output finalization/publication separate from the canonical Maven producer so publication never triggers a duplicate Maven build.
+- Keep canonical generated-output publication on the shared technical `bld` namespace and keep engineering-documentation assembly outside Java ownership.
+- Align bootstrap, cleanup, publication and release lifecycle integration with released `tool.git-project v0.2.8`.
+
 ## 0.2.0 — 2026-09-14
 
 - Make `evidence/executions/java-canonical/execution.log` the single canonical retained Java producer log and remove the byte-identical legacy `evidence/execution.log` compatibility path.
@@ -45,7 +55,7 @@
 - Generate the readable Surefire summary through a JDK-only helper so the canonical local action does not add Python as a Java-build prerequisite.
 - Keep publication/finalization separate from the cacheable/prepared canonical output tree.
 - Use the released `tool.git-project v0.1.0` reusable cleanup workflow for Java `dev/pr-<N>/bld` lifecycle cleanup instead of adding Java-specific branch-deletion logic.
-- Provide both automatic `pull_request: closed` cleanup and an explicit manual cleanup entry for legacy/stale PR previews.
+- Provide both automatic `pull_request: closed` cleanup and an explicit manual cleanup for legacy/stale previews.
 - Adopt the exact `tool.git-project v0.1.0` bootstrap-tool commit so local Java tooling also receives the corrected dirty-worktree-before-checkout ordering.
 - Restore the documented main-publication lifecycle by invoking the generated-output publisher on `main`, producing the `prod/bld` branch after a successful canonical build.
 
