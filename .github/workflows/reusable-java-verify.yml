@@ -52,6 +52,11 @@ on:
         required: false
         type: string
         default: ''
+      windows-mode:
+        description: Windows qualification mode: none, smoke or full
+        required: false
+        type: string
+        default: full
 
 permissions:
   contents: read
@@ -63,6 +68,17 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - name: Validate Windows mode
+        shell: bash
+        env:
+          WINDOWS_MODE: ${{ inputs.windows-mode }}
+        run: |
+          set -euo pipefail
+          case "$WINDOWS_MODE" in
+            none|smoke|full) ;;
+            *) echo "ERROR: windows-mode must be none, smoke or full" >&2; exit 2 ;;
+          esac
+
       - name: Checkout consumer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -142,6 +158,8 @@ jobs:
           retention-days: 14
 
   windows:
+    name: Windows qualification
+    if: ${{ inputs.windows-mode != 'none' }}
     needs: linux-canonical
     uses: ./.github/workflows/reusable-java-windows-compatibility.yml
     with:
@@ -153,3 +171,4 @@ jobs:
       runnable-jar-name: ${{ inputs.runnable-jar-name }}
       smoke-expected-output: ${{ inputs.smoke-expected-output }}
       test-report-path: ${{ inputs.test-report-path }}
+      windows-mode: ${{ inputs.windows-mode }}
