@@ -19,7 +19,7 @@ on:
         type: string
         default: consumer:java.windows-full
       windows-mode:
-        description: Windows qualification policy: auto, none, smoke or full
+        description: 'Windows qualification policy: auto, none, smoke or full'
         required: false
         type: string
         default: auto
