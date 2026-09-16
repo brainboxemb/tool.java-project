@@ -1,0 +1,17 @@
+{
+  "schema": "brainboxemb.execution-evidence",
+  "schema_version": 1,
+  "capability": "java.canonical",
+  "owner": "brainboxemb/tool.java-project",
+  "action": "canonical",
+  "source_revision": "44fb270c23edd85bdb5e294ad21e76bde36cc0e6",
+  "owner_revision": "44fb270c23edd85bdb5e294ad21e76bde36cc0e6",
+  "status": "success",
+  "exit_code": 0,
+  "log": "execution.log",
+  "domain_evidence": [
+    "../../toolchain-build-provenance.txt",
+    "../../tests/README.md"
+  ],
+  "tool_java_project_version": "0.3.0"
+}
