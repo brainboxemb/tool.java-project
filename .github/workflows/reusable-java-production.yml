@@ -19,10 +19,15 @@ on:
         type: string
         default: consumer:java.windows-full
       windows-mode:
-        description: Windows qualification policy: auto, none, smoke or full
+        description: Windows qualification override: auto, none, smoke or full
         required: false
         type: string
         default: auto
+      windows-default-mode:
+        description: Windows qualification used by auto for normal affected Java changes: none, smoke or full
+        required: false
+        type: string
+        default: smoke
       base-revision:
         description: Exact comparison base commit for affected analysis
         required: true
@@ -90,11 +95,16 @@ jobs:
         shell: bash
         env:
           WINDOWS_MODE: ${{ inputs.windows-mode }}
+          WINDOWS_DEFAULT_MODE: ${{ inputs.windows-default-mode }}
         run: |
           set -euo pipefail
           case "$WINDOWS_MODE" in
             auto|none|smoke|full) ;;
             *) echo "ERROR: windows-mode must be auto, none, smoke or full" >&2; exit 2 ;;
+          esac
+          case "$WINDOWS_DEFAULT_MODE" in
+            none|smoke|full) ;;
+            *) echo "ERROR: windows-default-mode must be none, smoke or full" >&2; exit 2 ;;
           esac
 
       - name: Checkout exact consumer source
@@ -129,6 +139,7 @@ jobs:
           JAVA_TASK: ${{ inputs.affected-task }}
           WINDOWS_FULL_TASK: ${{ inputs.windows-full-task }}
           REQUESTED_WINDOWS_MODE: ${{ inputs.windows-mode }}
+          WINDOWS_DEFAULT_MODE: ${{ inputs.windows-default-mode }}
         run: |
           set -euo pipefail
           mkdir -p .moon/preflight/java .moon/preflight/windows-full
@@ -149,7 +160,11 @@ jobs:
           if [[ "$java_affected" == true ]]; then
             case "$REQUESTED_WINDOWS_MODE" in
               auto)
-                if [[ "$windows_full_affected" == true ]]; then resolved=full; else resolved=smoke; fi
+                if [[ "$windows_full_affected" == true ]]; then
+                  resolved=full
+                else
+                  resolved="$WINDOWS_DEFAULT_MODE"
+                fi
                 ;;
               none|smoke|full) resolved="$REQUESTED_WINDOWS_MODE" ;;
             esac
@@ -157,8 +172,8 @@ jobs:
 
           printf 'affected=%s\n' "$java_affected" >> "$GITHUB_OUTPUT"
           printf 'windows_mode=%s\n' "$resolved" >> "$GITHUB_OUTPUT"
-          printf 'java_affected=%s windows_full_affected=%s windows_mode=%s\n' \
-            "$java_affected" "$windows_full_affected" "$resolved"
+          printf 'java_affected=%s windows_full_affected=%s windows_default_mode=%s windows_mode=%s\n' \
+            "$java_affected" "$windows_full_affected" "$WINDOWS_DEFAULT_MODE" "$resolved"
 
       - name: Upload preflight evidence
         if: always()
