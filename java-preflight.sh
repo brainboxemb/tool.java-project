@@ -62,7 +62,7 @@ if [[ -z "$git_tool_root" ]]; then
   git_tool_root="$repo/tools/tool.git-project"
 fi
 git_tool_root="$(cd "$git_tool_root" && pwd)"
-[[ -x "$git_tool_root/moon-affected.sh" ]] || fail "tool.git-project moon-affected.sh is unavailable at $git_tool_root"
+[[ -f "$git_tool_root/moon-affected.sh" ]] || fail "tool.git-project moon-affected.sh is unavailable at $git_tool_root"
 
 if [[ "$evidence_dir" != /* ]]; then
   evidence_dir="$repo/$evidence_dir"
@@ -88,9 +88,6 @@ if grep -Fq "\"$(json_escape "$windows_full_task")\"" "$affected_ids"; then
   windows_full_affected=true
 fi
 
-# A Windows-full capability is intentionally a stricter subset of canonical Java
-# impact. If a consumer configuration violates that invariant, fail rather than
-# silently skip the canonical producer that Windows qualification depends on.
 if [[ "$windows_full_affected" == true && "$java_affected" != true ]]; then
   fail "$windows_full_task is affected while $java_task is not; windows-full inputs must be a subset of canonical Java inputs"
 fi
