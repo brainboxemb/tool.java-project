@@ -43,7 +43,7 @@ on:
         type: string
         default: '**/target/surefire-reports/**'
       windows-mode:
-        description: Windows qualification mode: none, smoke or full
+        description: 'Windows qualification mode: none, smoke or full'
         required: false
         type: string
         default: full
