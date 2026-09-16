@@ -40,7 +40,7 @@ Windows qualification is split so normal pull requests do not pay for a full Win
 
 No Windows runner is started.
 
-Use for unrelated changes and Java work for which Windows has been explicitly disabled by policy.
+Use this as an explicit override when Windows qualification is deliberately not wanted. An unrelated change also results in no Windows job because the Java lifecycle stops before execution.
 
 ### `smoke`
 
@@ -55,41 +55,29 @@ Run both:
 1. an independent Windows Maven `verify` using the repository Maven Wrapper; and
 2. the exact canonical Linux-produced artifact smoke when a runnable artifact is configured.
 
-Use for Java build/toolchain/platform-sensitive changes and release qualification.
+Use this for Java build/toolchain/platform-sensitive changes and release qualification.
 
 ## Automatic policy and explicit override
 
-Normal consumers should use `windows-mode: auto`.
-
-`auto` is not itself a qualification level. It asks the shared preflight to select a level from two explicit inputs:
-
-- the affected capability set;
-- `windows-default-mode`, which defines the normal Windows level for an affected Java change.
-
-The initial shared default is:
-
-```text
-windows-default-mode: smoke
-```
-
-Resolution is therefore:
-
-```text
-Java not affected        -> none
-Java affected            -> windows-default-mode
-Windows-full affected    -> full
-release qualification    -> full
-```
-
-A project may deliberately choose another default such as `none` if Windows smoke is not useful for that product, or `full` for a highly platform-sensitive Java project.
-
-A consumer may also expose an explicit override for exceptional/manual qualification:
+Consumers expose one setting:
 
 ```text
 windows-mode: auto | none | smoke | full
 ```
 
-`full` is the important escape hatch when a reviewer wants stronger Windows evidence than the automatic impact classification selected. `smoke` and `none` are also explicit overrides, but normal pull requests should remain on `auto` so policy stays centralized.
+Normal pull requests use `auto`.
+
+For an affected Java change, `auto` resolves only between the two actual qualification levels:
+
+```text
+normal affected Java change -> smoke
+Windows-sensitive impact    -> full
+release qualification       -> full
+```
+
+If Java is not affected, execution stops before Windows and no Windows runner starts.
+
+`none`, `smoke` and `full` are explicit overrides. In particular, `full` is the escape hatch when a reviewer wants stronger Windows evidence than the automatic impact classification selected.
 
 ## Ownership
 
@@ -98,12 +86,11 @@ windows-mode: auto | none | smoke | full
 `tool.java-project` owns:
 
 - mapping Java capability impact to Java lifecycle decisions;
-- the default Windows qualification policy;
 - canonical Linux Maven execution;
 - Java producer/test/provenance evidence;
 - Windows smoke/full qualification behaviour;
 - Java-produced output preparation/finalization.
 
-Consumers own the task inputs that describe what changes affect their Java and Windows-sensitive capabilities, and may override the shared default only where product evidence justifies that difference.
+Consumers own the task inputs that describe what changes affect their Java and Windows-sensitive capabilities.
 
 Project-family requirements, planning, architecture and assembled engineering documentation are not part of this lifecycle.
