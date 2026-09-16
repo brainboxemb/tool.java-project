@@ -1,0 +1,176 @@
+name: Test Java affected policy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  affected-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Java tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Checkout exact generic affected owner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.git-project
+          ref: 7c43f37e7b07cfb57638a1d1dad2501de09ba7eb # v0.2.8
+          path: .tooling/tool.git-project
+
+      - name: Prove none, smoke and full from exact diffs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fixture="$RUNNER_TEMP/java-impact-fixture"
+          evidence="$GITHUB_WORKSPACE/.moon/affected-policy-test"
+          rm -rf "$fixture" "$evidence"
+          mkdir -p "$fixture/.moon" "$fixture/src/main/java" "$fixture/.mvn/wrapper"
+
+          cat > "$fixture/.moon/workspace.yml" <<'YAML'
+          projects:
+            consumer: '.'
+
+          vcs:
+            client: git
+            provider: github
+            defaultBranch: main
+
+          telemetry: false
+
+          pipeline:
+            installDependencies: false
+            syncProjects: false
+            syncWorkspace: false
+          YAML
+
+          cat > "$fixture/moon.yml" <<'YAML'
+          tasks:
+            java.canonical:
+              script: ':'
+              inputs:
+                - 'project.yml'
+                - 'project.java.yml'
+                - 'pom.xml'
+                - 'mvnw'
+                - 'mvnw.cmd'
+                - '.mvn/**'
+                - 'src/main/**'
+                - 'src/test/**'
+                - 'moon.yml'
+                - '.moon/workspace.yml'
+              options:
+                cache: false
+
+            java.windows-full:
+              script: ':'
+              inputs:
+                - 'project.yml'
+                - 'project.java.yml'
+                - 'pom.xml'
+                - 'mvnw'
+                - 'mvnw.cmd'
+                - '.mvn/**'
+                - 'moon.yml'
+                - '.moon/workspace.yml'
+              options:
+                cache: false
+          YAML
+
+          cat > "$fixture/project.yml" <<'EOF'
+          schema_version: 1
+          EOF
+          cat > "$fixture/project.java.yml" <<'EOF'
+          schema_version: 1
+          EOF
+          cat > "$fixture/pom.xml" <<'EOF'
+          <project><modelVersion>4.0.0</modelVersion></project>
+          EOF
+          printf '#!/usr/bin/env sh\nexit 0\n' > "$fixture/mvnw"
+          printf '@echo off\r\nexit /b 0\r\n' > "$fixture/mvnw.cmd"
+          printf 'wrapperVersion=3.3.4\n' > "$fixture/.mvn/wrapper/maven-wrapper.properties"
+          printf 'class App {}\n' > "$fixture/src/main/java/App.java"
+          printf '# fixture\n' > "$fixture/README.md"
+
+          git -C "$fixture" init -b main
+          git -C "$fixture" config user.name 'Migration 006 fixture'
+          git -C "$fixture" config user.email 'fixture@example.invalid'
+          git -C "$fixture" add .
+          git -C "$fixture" commit -m baseline
+          baseline="$(git -C "$fixture" rev-parse HEAD)"
+
+          printf '\nDocumentation only.\n' >> "$fixture/README.md"
+          git -C "$fixture" add README.md
+          git -C "$fixture" commit -m docs
+          docs_head="$(git -C "$fixture" rev-parse HEAD)"
+
+          bash "$GITHUB_WORKSPACE/java-preflight.sh" \
+            --repo "$fixture" \
+            --base "$baseline" \
+            --head "$docs_head" \
+            --git-tool-root "$GITHUB_WORKSPACE/.tooling/tool.git-project" \
+            --evidence-dir "$evidence/docs"
+          source "$evidence/docs/decision.env"
+          test "$java_affected" = false
+          test "$windows_full_affected" = false
+          test "$windows_mode" = none
+
+          printf '// normal source change\n' >> "$fixture/src/main/java/App.java"
+          git -C "$fixture" add src/main/java/App.java
+          git -C "$fixture" commit -m source
+          source_head="$(git -C "$fixture" rev-parse HEAD)"
+
+          bash "$GITHUB_WORKSPACE/java-preflight.sh" \
+            --repo "$fixture" \
+            --base "$docs_head" \
+            --head "$source_head" \
+            --git-tool-root "$GITHUB_WORKSPACE/.tooling/tool.git-project" \
+            --evidence-dir "$evidence/source"
+          source "$evidence/source/decision.env"
+          test "$java_affected" = true
+          test "$windows_full_affected" = false
+          test "$windows_mode" = smoke
+
+          printf '<!-- build contract change -->\n' >> "$fixture/pom.xml"
+          git -C "$fixture" add pom.xml
+          git -C "$fixture" commit -m build-contract
+          build_head="$(git -C "$fixture" rev-parse HEAD)"
+
+          bash "$GITHUB_WORKSPACE/java-preflight.sh" \
+            --repo "$fixture" \
+            --base "$source_head" \
+            --head "$build_head" \
+            --git-tool-root "$GITHUB_WORKSPACE/.tooling/tool.git-project" \
+            --evidence-dir "$evidence/build"
+          source "$evidence/build/decision.env"
+          test "$java_affected" = true
+          test "$windows_full_affected" = true
+          test "$windows_mode" = full
+
+          bash "$GITHUB_WORKSPACE/java-preflight.sh" \
+            --repo "$fixture" \
+            --base "$docs_head" \
+            --head "$source_head" \
+            --windows-mode full \
+            --git-tool-root "$GITHUB_WORKSPACE/.tooling/tool.git-project" \
+            --evidence-dir "$evidence/forced-full"
+          source "$evidence/forced-full/decision.env"
+          test "$windows_mode" = full
+
+      - name: Upload affected-policy evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: java-affected-policy-evidence
+          path: .moon/affected-policy-test
+          if-no-files-found: error
+          retention-days: 14
