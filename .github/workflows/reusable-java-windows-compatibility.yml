@@ -42,6 +42,11 @@ on:
         required: false
         type: string
         default: '**/target/surefire-reports/**'
+      windows-mode:
+        description: Windows qualification mode: none, smoke or full
+        required: false
+        type: string
+        default: full
 
 permissions:
   contents: read
@@ -49,6 +54,7 @@ permissions:
 jobs:
   windows-compatibility:
     name: Windows compatibility build
+    if: ${{ inputs.windows-mode == 'full' }}
     runs-on: windows-2025
     timeout-minutes: 10
 
@@ -98,7 +104,7 @@ jobs:
 
   windows-canonical-artifact-smoke:
     name: Windows canonical-artifact smoke
-    if: ${{ inputs.runnable-jar-name != '' }}
+    if: ${{ (inputs.windows-mode == 'smoke' || inputs.windows-mode == 'full') && inputs.runnable-jar-name != '' }}
     runs-on: windows-2025
     timeout-minutes: 5
 
