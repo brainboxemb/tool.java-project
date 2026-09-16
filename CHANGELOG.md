@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.1 — 2026-09-16
+
+- Fix reusable Java workflows so owner implementation checkouts use the reusable job's `job.workflow_repository` and `job.workflow_sha` instead of caller-associated `github.workflow_sha`.
+- Preserve exact released owner identity when `tool.java-project` is called from an independent consumer repository.
+- Close the external-consumer blocker exposed by `template.java-project` Migration-006 canary run `35144965034`.
+
 ## 0.3.0 — 2026-09-16
 
 - Add the shared Migration-006 Java execution lifecycle with an early exact base-to-head affected preflight before JDK, Maven or Windows allocation.
