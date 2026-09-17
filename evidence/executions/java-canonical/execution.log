@@ -1,0 +1,63 @@
+Java canonical verify
+repository=brainboxemb/tool.java-project
+source_revision=c0ca2e1365a64bc626ca331a8170d13340ae0b36
+checked_out_sha=c0ca2e1365a64bc626ca331a8170d13340ae0b36
+tool_java_project_revision=c0ca2e1365a64bc626ca331a8170d13340ae0b36
+tool_java_project_version=0.3.2
+
+> java -version
+openjdk version "1.8.0_504"
+OpenJDK Runtime Environment (Temurin)(build 1.8.0_504-b01)
+OpenJDK 64-Bit Server VM (Temurin)(build 25.504-b01, mixed mode)
+
+> ./mvnw --version
+Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)
+Maven home: /home/runner/.m2/wrapper/dists/apache-maven-3.9.16/56ba1f9f
+Java version: 1.8.0_504, vendor: Temurin, runtime: /usr/lib/jvm/temurin-8-jdk-amd64/jre
+Default locale: en, platform encoding: UTF-8
+OS name: "linux", version: "6.17.0-1022-azure", arch: "amd64", family: "unix"
+
+> ./mvnw --batch-mode --no-transfer-progress verify
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------< com.brainboxemb.tool:minimal-java-app >----------------
+[INFO] Building tool.java-project minimal fixture 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ minimal-java-app ---
+[INFO] skip non existing resourceDirectory /home/runner/work/tool.java-project/tool.java-project/fixture/minimal-java-app/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.16.0:compile (default-compile) @ minimal-java-app ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 1 source file with javac [debug target 1.8] to target/classes
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ minimal-java-app ---
+[INFO] skip non existing resourceDirectory /home/runner/work/tool.java-project/tool.java-project/fixture/minimal-java-app/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.16.0:testCompile (default-testCompile) @ minimal-java-app ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug target 1.8] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.6.0:test (default-test) @ minimal-java-app ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.brainboxemb.tool.fixture.AppTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in com.brainboxemb.tool.fixture.AppTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:3.5.1:jar (default-jar) @ minimal-java-app ---
+[INFO] Building jar: /home/runner/work/tool.java-project/tool.java-project/fixture/minimal-java-app/target/minimal-java-app-0.1.0-SNAPSHOT.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.097 s
+[INFO] Finished at: 2026-09-17T06:40:59Z
+[INFO] ------------------------------------------------------------------------
