@@ -73,6 +73,9 @@ on:
       windows-mode:
         description: Resolved Windows qualification mode
         value: ${{ jobs.preflight.outputs.windows_mode }}
+      preflight-duration-seconds:
+        description: Duration of the Java/Moon decision action itself
+        value: ${{ jobs.preflight.outputs.preflight_duration_seconds }}
 
 permissions:
   contents: read
@@ -85,6 +88,7 @@ jobs:
     outputs:
       affected: ${{ steps.resolve.outputs.affected }}
       windows_mode: ${{ steps.resolve.outputs.windows_mode }}
+      preflight_duration_seconds: ${{ steps.resolve.outputs.preflight_duration_seconds }}
     steps:
       - name: Validate policy inputs
         shell: bash
@@ -166,6 +170,7 @@ jobs:
           source .moon/preflight/java/decision.env
           printf 'affected=%s\n' "$java_affected" >> "$GITHUB_OUTPUT"
           printf 'windows_mode=%s\n' "$windows_mode" >> "$GITHUB_OUTPUT"
+          printf 'preflight_duration_seconds=%s\n' "$preflight_duration_seconds" >> "$GITHUB_OUTPUT"
 
       - name: Upload preflight evidence
         if: always()
@@ -177,7 +182,7 @@ jobs:
           include-hidden-files: true
           retention-days: 14
 
-  verify:
+  linux:
     name: Java execution
     if: ${{ needs.preflight.outputs.affected == 'true' }}
     needs: preflight
@@ -194,4 +199,43 @@ jobs:
       smoke-expected-output: ${{ inputs.smoke-expected-output }}
       test-report-path: ${{ inputs.test-report-path }}
       publication-artifact-paths: ${{ inputs.publication-artifact-paths }}
-      windows-mode: ${{ needs.preflight.outputs.windows_mode }}
+      windows-mode: none
+
+  windows-full:
+    name: Full Windows qualification
+    if: ${{ needs.preflight.outputs.affected == 'true' && needs.preflight.outputs.windows_mode == 'full' }}
+    needs: preflight
+    uses: ./.github/workflows/reusable-java-windows-compatibility.yml
+    with:
+      source-revision: ${{ inputs.head-revision }}
+      working-directory: ${{ inputs.working-directory }}
+      java-version: ${{ inputs.java-version }}
+      maven-version: ${{ inputs.maven-version }}
+      maven-wrapper-version: ${{ inputs.maven-wrapper-version }}
+      artifact-name: ${{ inputs.artifact-name }}
+      runnable-jar-name: ''
+      smoke-expected-output: ''
+      test-report-path: ${{ inputs.test-report-path }}
+      windows-mode: full
+
+  windows-smoke:
+    name: Canonical artifact Windows smoke
+    if: >-
+      needs.preflight.outputs.affected == 'true' &&
+      (needs.preflight.outputs.windows_mode == 'smoke' || needs.preflight.outputs.windows_mode == 'full') &&
+      inputs.runnable-jar-name != ''
+    needs:
+      - preflight
+      - linux
+    uses: ./.github/workflows/reusable-java-windows-compatibility.yml
+    with:
+      source-revision: ${{ inputs.head-revision }}
+      working-directory: ${{ inputs.working-directory }}
+      java-version: ${{ inputs.java-version }}
+      maven-version: ${{ inputs.maven-version }}
+      maven-wrapper-version: ${{ inputs.maven-wrapper-version }}
+      artifact-name: ${{ inputs.artifact-name }}
+      runnable-jar-name: ${{ inputs.runnable-jar-name }}
+      smoke-expected-output: ${{ inputs.smoke-expected-output }}
+      test-report-path: ${{ inputs.test-report-path }}
+      windows-mode: smoke
