@@ -104,7 +104,10 @@ jobs:
           check-latest: false
           verify-signature: true
           cache: maven
-          cache-dependency-path: ${{ inputs.working-directory }}/pom.xml
+          cache-dependency-path: |
+            ${{ inputs.working-directory }}/**/pom.xml
+            ${{ inputs.working-directory }}/.mvn/wrapper/maven-wrapper.properties
+            ${{ inputs.working-directory }}/.mvn/extensions.xml
 
       - name: Checkout exact tool.java-project implementation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
