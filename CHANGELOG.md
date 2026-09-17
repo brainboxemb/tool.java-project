@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.3.2 — 2026-09-17
+
+- Preserve Java/Moon preflight decision evidence durably in generated `bld` publication instead of keeping it only as a short-lived Actions artifact.
+- Add compact readable preflight logging plus durable workflow/job/step timing evidence so build time can be separated from CI/orchestration overhead.
+- Keep preflight as the small fan-out gate; for `full` qualification, allow native Windows Maven verification to run in parallel with the Linux canonical producer while exact-Linux-artifact smoke still waits for Linux output.
+- Keep Windows frequency caller-controlled: normal protected-branch PRs can use selective `auto`, ordinary already-qualified `main` publication can use `none`, and explicit/release qualification can force `full`.
+- Key Maven dependency caches from all project/module POMs plus wrapper/core-extension inputs so multi-module consumers do not inherit a root-POM-only cache key.
+- Keep canonical producer evidence and Maven authority unchanged; publication/finalization adds orchestration evidence without triggering another Maven build.
+
 ## 0.3.1 — 2026-09-16
 
 - Fix reusable Java workflows so owner implementation checkouts use the reusable job's `job.workflow_repository` and `job.workflow_sha` instead of caller-associated `github.workflow_sha`.
