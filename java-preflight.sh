@@ -57,6 +57,8 @@ case "$requested_windows_mode" in
   *) fail "windows mode must be auto, none, smoke or full" ;;
 esac
 
+preflight_started_epoch="$(date +%s)"
+
 repo="$(cd "$repo" && pwd)"
 if [[ -z "$git_tool_root" ]]; then
   git_tool_root="$repo/tools/tool.git-project"
@@ -108,10 +110,14 @@ if [[ "$java_affected" == true ]]; then
   esac
 fi
 
+preflight_finished_epoch="$(date +%s)"
+preflight_duration_seconds=$((preflight_finished_epoch - preflight_started_epoch))
+
 cat > "$evidence_dir/decision.env" <<EOF
 java_affected=$java_affected
 windows_full_affected=$windows_full_affected
 windows_mode=$resolved_windows_mode
+preflight_duration_seconds=$preflight_duration_seconds
 EOF
 
 cat > "$evidence_dir/decision.json" <<EOF
@@ -124,9 +130,23 @@ cat > "$evidence_dir/decision.json" <<EOF
   "java_affected": $java_affected,
   "windows_full_affected": $windows_full_affected,
   "requested_windows_mode": "$(json_escape "$requested_windows_mode")",
-  "windows_mode": "$(json_escape "$resolved_windows_mode")"
+  "windows_mode": "$(json_escape "$resolved_windows_mode")",
+  "duration_seconds": $preflight_duration_seconds
 }
 EOF
 
-printf 'java_affected=%s windows_full_affected=%s windows_mode=%s\n' \
-  "$java_affected" "$windows_full_affected" "$resolved_windows_mode"
+cat > "$evidence_dir/preflight.log" <<EOF
+java-preflight
+base=$base
+head=$head
+java_task=$java_task
+windows_full_task=$windows_full_task
+requested_windows_mode=$requested_windows_mode
+java_affected=$java_affected
+windows_full_affected=$windows_full_affected
+windows_mode=$resolved_windows_mode
+duration_seconds=$preflight_duration_seconds
+EOF
+
+printf 'java_affected=%s windows_full_affected=%s windows_mode=%s duration_seconds=%s\n' \
+  "$java_affected" "$windows_full_affected" "$resolved_windows_mode" "$preflight_duration_seconds"
