@@ -7,17 +7,97 @@ on:
         description: Actions artifact containing the prepared generated build-output tree
         required: true
         type: string
+      preflight-artifact-name:
+        description: Optional Actions artifact containing current Java preflight evidence
+        required: false
+        type: string
+        default: ''
+      source-revision:
+        description: Optional exact source revision override for generated-output publication
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   publish:
+    name: Publish generated output
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: write
-    # Generic branch mapping/push belongs to tool.git-project; Java owns the
-    # prepared build tree and the `bld` publication suffix.
-    uses: brainboxemb/tool.git-project/.github/workflows/reusable-generated-output-publish.yml@v0.2.8
-    with:
-      artifact_name: ${{ inputs.publication-artifact-name }}
-      branch_suffix: bld
+      actions: read
+    concurrency:
+      group: generated-output-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}-bld
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout exact Java publication finalizer
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .tooling/tool.java-project
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout exact generic publisher implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: brainboxemb/tool.git-project
+          ref: 7c43f37e7b07cfb57638a1d1dad2501de09ba7eb # v0.2.8
+          path: .tooling/tool.git-project
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download prepared output
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ${{ inputs.publication-artifact-name }}
+          path: ${{ runner.temp }}/generated-output-publication
+
+      - name: Download Java preflight evidence
+        if: ${{ inputs.preflight-artifact-name != '' }}
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ${{ inputs.preflight-artifact-name }}
+          path: ${{ runner.temp }}/java-preflight
+
+      - name: Collect current workflow timing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
+            > "$RUNNER_TEMP/workflow-jobs.json"
+
+      - name: Add durable orchestration evidence
+        shell: bash
+        env:
+          PREFLIGHT_ARTIFACT_NAME: ${{ inputs.preflight-artifact-name }}
+        run: |
+          set -euo pipefail
+          args=(
+            --publication-root "$RUNNER_TEMP/generated-output-publication"
+            --jobs-json "$RUNNER_TEMP/workflow-jobs.json"
+            --workflow-run-id "$GITHUB_RUN_ID"
+            --captured-at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          )
+          if [[ -n "$PREFLIGHT_ARTIFACT_NAME" ]]; then
+            args+=(--preflight-root "$RUNNER_TEMP/java-preflight")
+          fi
+          bash .tooling/tool.java-project/finalize-java-publication.sh "${args[@]}"
+
+      - name: Publish prepared output
+        uses: ./.tooling/tool.git-project/generated-output/publish
+        with:
+          source-directory: ${{ runner.temp }}/generated-output-publication
+          branch-suffix: bld
+          source-revision: ${{ inputs.source-revision }}
+          token: ${{ github.token }}
