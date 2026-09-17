@@ -1,0 +1,504 @@
+{
+  "schema_version": 1,
+  "workflow_run_id": 35190574150,
+  "captured_at": "2026-09-17T06:38:26Z",
+  "capture_point": "before-generated-output-push",
+  "selected_windows_mode": null,
+  "preflight_decision_duration_seconds": null,
+  "maven_reported_total_time": "8.366 s",
+  "summary": {
+    "started_runner_count": 8,
+    "completed_hosted_runner_seconds": 124,
+    "hosted_runner_seconds_to_capture": 130,
+    "wall_clock_seconds_to_capture": 121
+  },
+  "jobs": [
+    {
+      "name": "bootstrap-linux",
+      "runner": "ubuntu-24.04",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:36:25Z",
+      "completed_at": "2026-09-17T06:36:30Z",
+      "duration_seconds": 5,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:25Z",
+          "completed_at": "2026-09-17T06:36:26Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout without submodules",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:26Z",
+          "completed_at": "2026-09-17T06:36:27Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Bootstrap pinned Git tooling",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:27Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Checkout without submodules",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:28Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:28Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "bootstrap-windows",
+      "runner": "windows-2025",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:36:25Z",
+      "completed_at": "2026-09-17T06:36:37Z",
+      "duration_seconds": 12,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:25Z",
+          "completed_at": "2026-09-17T06:36:26Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout without submodules",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:26Z",
+          "completed_at": "2026-09-17T06:36:31Z",
+          "duration_seconds": 5
+        },
+        {
+          "name": "Bootstrap pinned Git tooling",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:31Z",
+          "completed_at": "2026-09-17T06:36:33Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Post Checkout without submodules",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:33Z",
+          "completed_at": "2026-09-17T06:36:36Z",
+          "duration_seconds": 3
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:36Z",
+          "completed_at": "2026-09-17T06:36:36Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "release-metadata",
+      "runner": "ubuntu-24.04",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:36:25Z",
+      "completed_at": "2026-09-17T06:36:31Z",
+      "duration_seconds": 6,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:26Z",
+          "completed_at": "2026-09-17T06:36:27Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout source",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:27Z",
+          "completed_at": "2026-09-17T06:36:27Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Validate tool version and release tag semantics",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:27Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Validate generic Git lifecycle release pin",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:28Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Checkout source",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:28Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:28Z",
+          "completed_at": "2026-09-17T06:36:28Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "fixture / Linux canonical build",
+      "runner": "ubuntu-24.04",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:36:39Z",
+      "completed_at": "2026-09-17T06:37:03Z",
+      "duration_seconds": 24,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:40Z",
+          "completed_at": "2026-09-17T06:36:41Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Validate execution inputs",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:41Z",
+          "completed_at": "2026-09-17T06:36:41Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Checkout exact consumer source",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:41Z",
+          "completed_at": "2026-09-17T06:36:42Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Set up exact Java 8 baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:42Z",
+          "completed_at": "2026-09-17T06:36:43Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout exact tool.java-project implementation",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:43Z",
+          "completed_at": "2026-09-17T06:36:43Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Run canonical Java action",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:43Z",
+          "completed_at": "2026-09-17T06:36:58Z",
+          "duration_seconds": 15
+        },
+        {
+          "name": "Upload canonical Java artifact",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:58Z",
+          "completed_at": "2026-09-17T06:36:59Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Upload prepared build publication",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:59Z",
+          "completed_at": "2026-09-17T06:36:59Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Upload Linux evidence",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:36:59Z",
+          "completed_at": "2026-09-17T06:37:00Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Checkout exact tool.java-project implementation",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:00Z",
+          "completed_at": "2026-09-17T06:37:00Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Set up exact Java 8 baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:00Z",
+          "completed_at": "2026-09-17T06:37:01Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Checkout exact consumer source",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:01Z",
+          "completed_at": "2026-09-17T06:37:02Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:02Z",
+          "completed_at": "2026-09-17T06:37:02Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "fixture / windows / Windows compatibility build",
+      "runner": "windows-2025",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:37:05Z",
+      "completed_at": "2026-09-17T06:38:06Z",
+      "duration_seconds": 61,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:06Z",
+          "completed_at": "2026-09-17T06:37:08Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Validate exact source when supplied",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:08Z",
+          "completed_at": "2026-09-17T06:37:09Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout exact consumer source",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:09Z",
+          "completed_at": "2026-09-17T06:37:17Z",
+          "duration_seconds": 8
+        },
+        {
+          "name": "Set up exact Java 8 baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:17Z",
+          "completed_at": "2026-09-17T06:37:21Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Validate Maven Wrapper baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:21Z",
+          "completed_at": "2026-09-17T06:37:40Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Verify",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:40Z",
+          "completed_at": "2026-09-17T06:37:59Z",
+          "duration_seconds": 19
+        },
+        {
+          "name": "Upload Windows test evidence",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:59Z",
+          "completed_at": "2026-09-17T06:38:00Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Post Set up exact Java 8 baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:00Z",
+          "completed_at": "2026-09-17T06:38:02Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Post Checkout exact consumer source",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:02Z",
+          "completed_at": "2026-09-17T06:38:04Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:04Z",
+          "completed_at": "2026-09-17T06:38:04Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "fixture / windows / Windows canonical-artifact smoke",
+      "runner": "windows-2025",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:37:05Z",
+      "completed_at": "2026-09-17T06:37:11Z",
+      "duration_seconds": 6,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:06Z",
+          "completed_at": "2026-09-17T06:37:07Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Set up exact Java 8 baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:07Z",
+          "completed_at": "2026-09-17T06:37:07Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Download canonical Linux artifact",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:07Z",
+          "completed_at": "2026-09-17T06:37:08Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Run canonical artifact on Windows",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:08Z",
+          "completed_at": "2026-09-17T06:37:10Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Post Set up exact Java 8 baseline",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:10Z",
+          "completed_at": "2026-09-17T06:37:10Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:37:10Z",
+          "completed_at": "2026-09-17T06:37:10Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "verify-test-summary",
+      "runner": "ubuntu-24.04",
+      "conclusion": "success",
+      "started_at": "2026-09-17T06:38:08Z",
+      "completed_at": "2026-09-17T06:38:18Z",
+      "duration_seconds": 10,
+      "complete": true,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:08Z",
+          "completed_at": "2026-09-17T06:38:09Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout source and released generic schema owner",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:09Z",
+          "completed_at": "2026-09-17T06:38:10Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Bootstrap pinned Git tooling",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:10Z",
+          "completed_at": "2026-09-17T06:38:11Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Install schema-validation test dependency",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:11Z",
+          "completed_at": "2026-09-17T06:38:15Z",
+          "duration_seconds": 4
+        },
+        {
+          "name": "Download prepared publication",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:15Z",
+          "completed_at": "2026-09-17T06:38:16Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Verify readable Surefire summary and common execution evidence",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:16Z",
+          "completed_at": "2026-09-17T06:38:16Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Post Checkout source and released generic schema owner",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:16Z",
+          "completed_at": "2026-09-17T06:38:16Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:16Z",
+          "completed_at": "2026-09-17T06:38:16Z",
+          "duration_seconds": 0
+        }
+      ]
+    },
+    {
+      "name": "publish-fixture / Publish generated output",
+      "runner": "ubuntu-24.04",
+      "conclusion": null,
+      "started_at": "2026-09-17T06:38:20Z",
+      "completed_at": null,
+      "duration_seconds": 6,
+      "complete": false,
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:21Z",
+          "completed_at": "2026-09-17T06:38:23Z",
+          "duration_seconds": 2
+        },
+        {
+          "name": "Checkout exact Java publication finalizer",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:23Z",
+          "completed_at": "2026-09-17T06:38:24Z",
+          "duration_seconds": 1
+        },
+        {
+          "name": "Checkout exact generic publisher implementation",
+          "conclusion": "success",
+          "started_at": "2026-09-17T06:38:24Z",
+          "completed_at": "2026-09-17T06:38:24Z",
+          "duration_seconds": 0
+        },
+        {
+          "name": "Download prepared output",
+          "conclusion": null,
+          "started_at": "2026-09-17T06:38:24Z",
+          "completed_at": null,
+          "duration_seconds": 2
+        }
+      ]
+    }
+  ]
+}
