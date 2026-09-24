@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Route repository agent guidance through `brainboxemb.meta/AGENTS.md`, keep dependency-owner AGENTS non-inherited by consumers, and retain only Java-tool-specific navigation/boundaries locally.
+
 ## 0.3.2 — 2026-09-17
 
 - Preserve Java/Moon preflight decision evidence durably in generated `bld` publication instead of keeping it only as a short-lived Actions artifact.
