@@ -1,51 +1,58 @@
-# AGENTS.md
+# Repository agent guidance
 
-## Repository purpose
+This file is for agents changing `tool.java-project` itself. Java consumer
+repositories do **not** inherit these instructions.
 
-This repository contains reusable Java/Maven engineering tooling. Keep it generic and independently testable.
+Before repository work, read the shared BrainboxEmb agent entrypoint:
 
-## Core rules
+- [brainboxemb.meta/AGENTS.md](https://github.com/brainboxemb/brainboxemb.meta/blob/main/AGENTS.md)
 
-- Use one work-item number end to end: create issue `#N`, create `feature/pr-N-<short-slug>`, make the smallest initial commit, then convert that exact issue directly into draft PR `#N`; do not create a separate PR number for the same work item when issue conversion is available.
-- Continue implementation, evidence/review and merge in that same PR.
-- Do not commit directly to `main` for normal work.
-- Keep product/domain behaviour out of this repository.
-- Consumer repositories keep their own product source, POM/module layout and product tests.
-- Use the Maven Wrapper from each Java project rather than assuming a globally installed Maven.
-- Keep Java SE 8 as the initial compile/API/bytecode baseline until a deliberate toolchain change is accepted.
-- Prefer one canonical platform-neutral Java artifact over OS-specific JARs.
-- Linux CI is the canonical artifact producer; Windows CI verifies compatibility and executes the canonical artifact where applicable.
-- Do not make Docker a prerequisite for normal compile/unit-test workflows. Use it only when a real external service or integration fixture needs it.
-- Record tool/runtime versions explicitly; do not silently follow `latest` for the canonical baseline.
-- Reusable workflows should be consumed through a deliberate release/tag or immutable commit reference.
-- Keep credentials, secrets and proprietary configuration out of source.
+It owns the current generic Git/commit/PR/CI workflow and routes to shared
+repository-tooling and software/Java guidance.
 
-## Repository boundaries
+## Local technical entrypoints
 
-Generic tooling may include:
+For durable `tool.java-project` behaviour, start with:
 
-- reusable GitHub Actions workflows;
-- Java/JDK/Maven provisioning policy;
-- Maven Wrapper validation;
-- test/report/artifact collection;
-- build provenance;
-- generic fixtures/reference consumers;
-- scripts that are genuinely reusable across Java repositories.
+- [README.md](README.md) — repository purpose, Java baseline and lifecycle overview;
+- [docs/consumer-usage.md](docs/consumer-usage.md) — released consumer contract and pinning model;
+- [docs/execution-lifecycle.md](docs/execution-lifecycle.md) — Java execution and ownership boundary;
+- [docs/local-canonical-action.md](docs/local-canonical-action.md) — canonical local Java action;
+- [project.java.yml](project.java.yml) — current Java/Maven toolchain baseline;
+- [VERSION](VERSION) and [CHANGELOG.md](CHANGELOG.md) — release identity/history.
 
-Do not include:
+Use source, fixtures, workflows and live CI for implementation/current-state evidence.
 
-- event-timing/SI-01 assumptions;
-- RFID/CAN/display/backoffice behaviour;
-- proprietary/private protocols;
-- one product's Pi image/deployment content;
-- application-specific module names as reusable-workflow requirements.
+## Owner boundaries
 
-## Evidence
+Keep ownership explicit:
 
-A toolchain change is not complete merely because its YAML parses. Prefer executable evidence:
+- generic repository/dependency/bootstrap/publication mechanics belong in `tool.git-project`;
+- reusable Java/Maven execution, evidence and Windows qualification belong here;
+- consumer repositories own product source, POM/module layout and product tests;
+- project-family requirements, architecture and engineering-document assembly stay outside this repository.
 
-- Linux fixture `verify` succeeds;
-- Windows fixture `verify` succeeds;
-- the exact canonical Linux-produced runnable artifact executes on Windows;
-- provenance identifies source/toolchain inputs;
-- consumer usage is documented.
+Keep Java tooling generic and independently testable. Product/domain assumptions,
+credentials, proprietary protocols or product-specific deployment behaviour do
+not belong here.
+
+## Consumer boundary
+
+Pinned consumers reconstruct exact tool behaviour from their own configuration,
+immutable workflow/gitlink refs and this pinned revision's README, docs, source,
+fixtures and tests.
+
+They should not use this owner `AGENTS.md` as consumer working guidance.
+
+## Local constraints
+
+Retain the repository's documented Java SE 8 / Maven Wrapper baseline until a
+deliberate toolchain change is accepted. Linux remains the canonical artifact
+producer and Windows provides compatibility qualification as documented in the
+repository lifecycle.
+
+Do not make Docker a prerequisite for the normal Java compile/unit-test path
+unless a concrete integration requirement justifies it.
+
+When changing a public reusable workflow or Java tooling contract, update the
+owning README/docs/source/tests and qualify the exact PR head before merge.
